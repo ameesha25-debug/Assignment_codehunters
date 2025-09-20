@@ -5,21 +5,32 @@ import { Badge } from "@/components/ui/badge";
 
 export type Product = {
   id: string;
-  title: string;
-  image: string;
+  // Accept both API and UI/mock field names
+  name?: string; // API
+  title?: string; // UI/mock
+  image_url?: string; // API
+  image?: string; // UI/mock
   price: number;
   strikePrice?: number;
-  rating?: number;
-  badge?: string;
+  rating?: number | null;
+  review_count?: number | null;
+  badge?: string | null;
 };
 
 export default function ProductCard({ product }: { product: Product }) {
+  // Resolve fields from either naming convention
+  const displayTitle = product.name ?? product.title ?? "";
+  const displayImage =
+    product.image_url ??
+    product.image ??
+    `https://picsum.photos/seed/${product.id}/600/800`; // safe fallback
+
   return (
     <Card className="group overflow-hidden">
       <div className="relative bg-muted/30">
         <img
-          src={product.image}
-          alt={product.title}
+          src={displayImage}
+          alt={displayTitle}
           className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
           loading="lazy"
         />
@@ -35,16 +46,23 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
 
       <CardContent className="space-y-1 p-3">
+        {/* Optional category label can be dynamic later */}
         <p className="caption">Dresses</p>
-        <p className="line-clamp-1 text-sm">{product.title}</p>
+        <p className="line-clamp-1 text-sm">{displayTitle}</p>
+
         <div className="flex items-center gap-2">
           <p className="font-semibold">₹{product.price}</p>
           {product.strikePrice && (
-            <p className="text-xs text-muted-foreground line-through">₹{product.strikePrice}</p>
+            <p className="text-xs text-muted-foreground line-through">
+              ₹{product.strikePrice}
+            </p>
           )}
         </div>
-        {product.rating && (
-          <p className="caption">★ {product.rating.toFixed(1)} • 3k+ reviews</p>
+
+        {product.rating != null && (
+          <p className="caption">
+            ★ {product.rating.toFixed(1)} - {product.review_count ?? 0} reviews
+          </p>
         )}
       </CardContent>
 
