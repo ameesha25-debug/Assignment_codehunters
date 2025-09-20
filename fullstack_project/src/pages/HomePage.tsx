@@ -1,11 +1,11 @@
-import Header from "@/components/layout/Header";
-import CategoryBar from "@/components/layout/CategoryBar";
+import Header from "@/components/common/Header";
+import CategoryBar from "@/components/common/CategoryBar";
 import HeroCarousel from "@/components/home/HeroCarousel";
 import PromoGrid from "@/components/home/PromoGrid";
 import TrendyProducts from "@/components/home/TrendyProducts";
 import ProductCarousel from "@/components/products/ProductCarousel";
 import EmailSubscribe from "@/components/forms/EmailSubscribe";
-import Footer from "@/components/layout/Footer";
+import Footer from "@/components/common/Footer";
 import type { Product } from "@/components/products/ProductCard";
 
 const carouselItems: Product[] = Array.from({ length: 8 }).map((_, i) => ({
