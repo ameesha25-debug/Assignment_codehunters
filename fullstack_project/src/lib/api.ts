@@ -1,5 +1,5 @@
-// src/lib/api.ts
 import { supabase } from "./supabase";
+
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
 
@@ -160,18 +160,18 @@ export const api = {
     }>;
   },
 
-  productById: async (id: string) => {
-    if (!id || id === "null") throw new Error("Invalid product id");
-    const { data, error } = await supabase
-      .from("products")
-      .select(
-        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
-      )
-      .eq("id", id)
-      .single();
-    if (error) throw error;
-    return data as Product;
-  },
+  // inside export const api = { ... }
+productById: async (id: string) => {
+  if (!id || id === "null") throw new Error("Invalid product id");
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as Product;
+},
+
 
   categorySiblings: async (categoryId: string) => {
     const { data: me, error: e1 } = await supabase
@@ -207,144 +207,20 @@ export const api = {
     return (parent ?? null) as Category | null;
   },
 
-  productsByCategory: async (
-    categoryId: string,
-    opts?: { limit?: number; excludeId?: string }
-  ) => {
-    const { data, error } = await supabase
-      .from("products")
-      .select(
-        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
-      )
-      .eq("category_id", categoryId)
-      .order("created_at", { ascending: false })
-      .limit(opts?.limit ?? 12);
-    if (error) throw error;
-    let list = (data ?? []) as Product[];
-    if (opts?.excludeId) list = list.filter((p) => p.id !== opts.excludeId);
-    return list;
-  },
+productsByCategory: async (categoryId: string, opts?: { limit?: number; excludeId?: string }) => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+    .eq("category_id", categoryId)
+    .order("created_at", { ascending: false })
+    .limit(opts?.limit ?? 12);
+  if (error) throw error;
+  let list = (data ?? []) as Product[];
+  if (opts?.excludeId) list = list.filter((p) => p.id !== opts.excludeId);
+  return list;
+},
 
-  // NEW: fetch categories by ids (used by Search PLP to build "Shop For")
-  categoriesByIds: async (ids: string[]) => {
-    if (!ids || ids.length === 0) return [];
-    const { data, error } = await supabase
-      .from("categories")
-      .select("id,name,slug,parent_id")
-      .in("id", ids);
-    if (error) throw error;
-    return (data ?? []) as Category[];
-  },
-
-  async resolveSearch(query: string): Promise<SearchResolution> {
-    const q = normalize(query);
-    if (!q) return { type: "none", query };
-
-    // 1) Size match (exact)
-    const sizeHit = KNOWN_SIZES.find((s) => s.toLowerCase() === q);
-    if (sizeHit) return { type: "size", size: sizeHit };
-
-    // 2) Category exact match on name or slug
-    {
-      const { data: catExact } = await supabase
-        .from("categories")
-        .select("id, slug, name, parent_id")
-        .or(`slug.eq.${q},name.ilike.${q}`)
-        .limit(1);
-
-      if (catExact && catExact.length > 0) {
-        const c = catExact[0] as Category;
-        if (c.parent_id) {
-          const { data: parent } = await supabase
-            .from("categories")
-            .select("id, slug")
-            .eq("id", c.parent_id)
-            .single();
-          if (parent) {
-            return {
-              type: "subcategory",
-              category: { id: c.id, slug: c.slug },
-              parent: { id: (parent as any).id, slug: (parent as any).slug },
-            };
-          }
-        } else {
-          return { type: "category", category: { id: c.id, slug: c.slug } };
-        }
-      }
-    }
-
-    // 3) Category fuzzy: starts-with
-    {
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("id, slug, name, parent_id")
-        .ilike("name", `${q}%`)
-        .order("sort_order", { ascending: true })
-        .limit(1);
-      if (cats && cats.length > 0) {
-        const c = cats[0] as Category;
-        if (c.parent_id) {
-          const { data: parent } = await supabase
-            .from("categories")
-            .select("id, slug")
-            .eq("id", c.parent_id)
-            .single();
-          if (parent) {
-            return {
-              type: "subcategory",
-              category: { id: c.id, slug: c.slug },
-              parent: { id: (parent as any).id, slug: (parent as any).slug },
-            };
-          }
-        } else {
-          return { type: "category", category: { id: c.id, slug: c.slug } };
-        }
-      }
-    }
-
-    // 4) Product name search for PLP (now includes category_id)
-    // 4) Product name search (robust patterns to handle hyphens/variants)
-    {
-      const patterns = buildIlikePatterns(query); // use raw query, not normalized "q"
-      let rows: any[] = [];
-      for (const p of patterns) {
-        const { data } = await supabase
-          .from("products")
-          .select("id, name, image_url, price, category_id")
-          .ilike("name", p)
-          .limit(60);
-        if (data && data.length) {
-          rows = data;
-          break;
-        }
-      }
-      if (rows.length) {
-        const list = rows.map((p) => ({
-          id: p.id,
-          name: p.name,
-          image_url: p.image_url ?? null,
-          price: p.price,
-          category_id: p.category_id,
-        }));
-        return { type: "products", products: list, query };
-      }
-    }
-
-    // 5) Nothing matched
-    return { type: "none", query };
-  },
-
-  // Size PLP helper
-  async productsBySize(size: string) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, name, image_url, price, category_id")
-      .ilike("name", `%${size}%`)
-      .limit(60);
-    if (error) throw error;
-    return data ?? [];
-  },
-};
+}
 
 // fetch hero categories by slugs, preserving order
 export async function fetchHeroCategories(
