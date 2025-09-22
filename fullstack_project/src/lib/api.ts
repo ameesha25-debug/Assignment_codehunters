@@ -83,6 +83,67 @@ export const api = {
       created_at: string;
     }>;
   },
+
+  // inside export const api = { ... }
+productById: async (id: string) => {
+  if (!id || id === "null") throw new Error("Invalid product id");
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as Product;
+},
+
+
+categorySiblings: async (categoryId: string) => {
+  const { data: me, error: e1 } = await supabase
+    .from("categories")
+    .select("parent_id")
+    .eq("id", categoryId)
+    .single();
+  if (e1) throw e1;
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id,name,slug,parent_id,sort_order,image_url")
+    .eq("parent_id", me?.parent_id)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Category[];
+},
+
+parentCategoryOf: async (categoryId: string) => {
+  const { data: me, error } = await supabase
+    .from("categories")
+    .select("parent_id")
+    .eq("id", categoryId)
+    .single();
+  if (error) throw error;
+  if (!me?.parent_id) return null;
+  const { data: parent, error: e2 } = await supabase
+    .from("categories")
+    .select("id,name,slug,parent_id,image_url,sort_order")
+    .eq("id", me.parent_id)
+    .single();
+  if (e2) throw e2;
+  return (parent ?? null) as Category | null;
+},
+
+productsByCategory: async (categoryId: string, opts?: { limit?: number; excludeId?: string }) => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+    .eq("category_id", categoryId)
+    .order("created_at", { ascending: false })
+    .limit(opts?.limit ?? 12);
+  if (error) throw error;
+  let list = (data ?? []) as Product[];
+  if (opts?.excludeId) list = list.filter((p) => p.id !== opts.excludeId);
+  return list;
+},
+
 }
 
 // fetch hero categories by slugs, preserving order
