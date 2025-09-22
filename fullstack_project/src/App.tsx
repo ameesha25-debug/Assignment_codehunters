@@ -3,6 +3,8 @@ import HomePage from "@/pages/HomePage";
 import CategoryBar from './components/common/CategoryBar'; // your image grid homepage bar
 import CategoryPLP from './pages/CategoryPLP';
 import SubcategoryPLP from './pages/SubcategoryPLP'
+import AuthPage from './pages/AuthPage';
+import ProductPDP from './pages/ProductPDP';
 export default function App() {
   return (
     
