@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -7,10 +7,36 @@ import { Heart, ShoppingBag, Menu } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
 import { SignInForm } from "@/components/forms/SignInForm";
 import { SignUpForm } from "@/components/forms/SignUpForm";
+import { api } from "@/lib/api";
 
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const navigate = useNavigate();
+
+  async function handleSearch(q: string) {
+    const query = q.trim();
+    if (!query) return;
+    const res = await api.resolveSearch(query);
+    switch (res.type) {
+      case "category":
+        navigate(`/category/${res.category.slug}`);
+        break;
+      case "subcategory":
+        navigate(`/category/${res.parent.slug}/${res.category.slug}`);
+        break;
+      case "size":
+        navigate(`/search/size/${encodeURIComponent(res.size)}`);
+        break;
+      case "products":
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+        break;
+      case "none":
+      default:
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+        break;
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b">
@@ -78,17 +104,17 @@ export default function Header() {
             <SearchBar
               placeholder="Search for products, brands and more"
               className="w-full"
+              onSubmitQuery={handleSearch}
             />
           </div>
         </div>
 
         {/* Right cluster */}
         <div className="ml-auto flex items-center gap-1 md:gap-4 pr-1 lg:pr-10">
-          {/* Sign up / Sign in as drawer */}
           <Button
             onClick={() => {
               setAuthOpen(true);
-              setMode("signin"); // default to sign-in
+              setMode("signin");
             }}
             className="hidden sm:inline-flex h-9 rounded-md px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
           >
@@ -120,6 +146,7 @@ export default function Header() {
         <SearchBar
           placeholder="Search for products, brands and more"
           className="w-full"
+          onSubmitQuery={handleSearch}
         />
       </div>
 
@@ -164,3 +191,4 @@ export default function Header() {
     </header>
   );
 }
+
