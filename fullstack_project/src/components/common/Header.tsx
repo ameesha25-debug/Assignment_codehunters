@@ -5,8 +5,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Heart, ShoppingBag, Menu } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
-import { SignInForm } from "@/components/forms/SignInForm";
-import { SignUpForm } from "@/components/forms/SignUpForm";
+import SignInForm from "@/components/forms/SignInForm";
+import SignUpForm  from "@/components/forms/SignUpForm";
 
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);
@@ -134,7 +134,7 @@ export default function Header() {
 
           {mode === "signin" ? (
             <>
-              <SignInForm />
+              <SignInForm onSwitch={() => setMode("signup")} />
               <p className="mt-4 text-sm">
                 Don’t have an account?{" "}
                 <button
@@ -147,7 +147,7 @@ export default function Header() {
             </>
           ) : (
             <>
-              <SignUpForm />
+              <SignUpForm onSwitch={() => setMode("signin")} />
               <p className="mt-4 text-sm">
                 Already have an account?{" "}
                 <button

@@ -1,41 +1,20 @@
-// pages/AuthPage.tsx
-import { useState } from "react";
-import { SignInForm } from "../components/forms/SignInForm";
-import { SignUpForm } from "../components/forms/SignUpForm";
-import { Sheet } from "@/components/ui/sheet"; 
+import React, { useState } from 'react';
+import SignInForm from '../components/forms/SignInForm';
+import SignUpForm from '../components/forms/SignUpForm';
 
 export default function AuthPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [showSignUp, setShowSignUp] = useState(false);
 
   return (
-    <Sheet open>
-      <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow">
-        <h2 className="text-2xl font-semibold mb-4">
-          {mode === "signin" ? "Sign In" : "Sign Up"}
-        </h2>
-
-        {mode === "signin" ? (
-          <>
-            <SignInForm />
-            <p className="text-sm mt-4">
-              Don’t have an account?{" "}
-              <button onClick={() => setMode("signup")} className="text-blue-600">
-                Sign up
-              </button>
-            </p>
-          </>
-        ) : (
-          <>
-            <SignUpForm />
-            <p className="text-sm mt-4">
-              Already have an account?{" "}
-              <button onClick={() => setMode("signin")} className="text-blue-600">
-                Sign in
-              </button>
-            </p>
-          </>
-        )}
-      </div>
-    </Sheet>
+    <div>
+      <h2 style={{ textAlign: 'center', marginBottom: 24 }}>
+        {showSignUp ? "Create your account" : "Sign In to your account"}
+      </h2>
+      {showSignUp ? (
+        <SignUpForm onSwitch={() => setShowSignUp(false)} />
+      ) : (
+        <SignInForm onSwitch={() => setShowSignUp(true)} />
+      )}
+    </div>
   );
 }

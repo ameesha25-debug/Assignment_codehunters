@@ -1,21 +1,30 @@
-// src/middleware/auth.ts
-import { Request, Response, NextFunction } from "express";
-import { createClient } from "@supabase/supabase-js";
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-
-  const { data: user, error } = await supabase.auth.getUser(token);
-
-  if (error || !user) return res.status(401).json({ error: "Invalid token" });
-
-  (req as any).user = user;
-  next();
+// Extend Request type to include user field
+interface AuthRequest extends Request {
+  user?: { id: string; mobile: string };
 }
+
+export const authenticateToken = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Expect "Bearer <token>"
+
+  if (!token) {
+    return res.status(401).json({ message: 'No token provided' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+    req.user = user as { id: string; mobile: string };
+    next();
+  });
+};
