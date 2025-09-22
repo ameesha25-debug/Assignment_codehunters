@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { Heart, ShoppingBag, Menu, Search as SearchIcon } from "lucide-react";
+import { Heart, ShoppingBag, Menu } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
+import { SignInForm } from "@/components/forms/SignInForm";
+import { SignUpForm } from "@/components/forms/SignUpForm";
 
 export default function Header() {
+  const [authOpen, setAuthOpen] = useState(false);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b">
       <div
@@ -78,29 +84,17 @@ export default function Header() {
 
         {/* Right cluster */}
         <div className="ml-auto flex items-center gap-1 md:gap-4 pr-1 lg:pr-10">
-          {/* Standalone search icon — desktop only */}
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            className="hidden md:inline-flex rounded-md"
-            asChild
-          >
-            <Link to="/search" aria-label="Open search">
-              <SearchIcon className="h-5 w-5" aria-hidden="true" />
-            </Link>
-          </Button> */}
-
-          {/* Sign up / Sign in */}
+          {/* Sign up / Sign in as drawer */}
           <Button
-            asChild
+            onClick={() => {
+              setAuthOpen(true);
+              setMode("signin"); // default to sign-in
+            }}
             className="hidden sm:inline-flex h-9 rounded-md px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
           >
-            <Link to="/auth" aria-label="Sign up or sign in">
-              Sign up / Sign in
-            </Link>
+            Sign up / Sign in
           </Button>
 
-          {/* Favourites with label */}
           <Link
             to="/wishlist"
             className="grid place-items-center px-2 py-1 text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
@@ -110,7 +104,6 @@ export default function Header() {
             <span className="mt-0.5">Favourites</span>
           </Link>
 
-          {/* Basket with label */}
           <Link
             to="/cart"
             className="relative grid place-items-center px-2 py-1 text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
@@ -122,7 +115,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile search below the row */}
+      {/* Mobile search */}
       <div className="md:hidden px-3 pt-2 pb-3">
         <SearchBar
           placeholder="Search for products, brands and more"
@@ -131,8 +124,43 @@ export default function Header() {
       </div>
 
       <Separator className="bg-zinc-100" />
+
+      {/* Auth Drawer */}
+      <Sheet open={authOpen} onOpenChange={setAuthOpen}>
+        <SheetContent side="right" className="w-full max-w-md p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            {mode === "signin" ? "Sign In to your account" : "Create a new account"}
+          </h2>
+
+          {mode === "signin" ? (
+            <>
+              <SignInForm />
+              <p className="mt-4 text-sm">
+                Don’t have an account?{" "}
+                <button
+                  onClick={() => setMode("signup")}
+                  className="text-blue-600 underline"
+                >
+                  Sign up
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
+              <SignUpForm />
+              <p className="mt-4 text-sm">
+                Already have an account?{" "}
+                <button
+                  onClick={() => setMode("signin")}
+                  className="text-blue-600 underline"
+                >
+                  Sign in
+                </button>
+              </p>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </header>
   );
 }
-
-
