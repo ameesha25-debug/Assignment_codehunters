@@ -1,65 +1,103 @@
-// components/forms/SignInForm.tsx
-import { useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { Input } from "@/components/ui/input"; // ✅ update based on your project structure
+import React, { useState } from "react";
+import { api } from "../../lib/api";
+import "./SignInForm.css";
 
-export function SignInForm() {
-  const [email, setEmail] = useState("");
+const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7}$/;
+
+export default function SignInForm({ onSwitch }: { onSwitch: () => void }) {
+  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
 
-  const validateEmail = (email: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value.replace(/\D/g, "");
+    const trimmed = input.slice(0, 10);
+    setMobile(trimmed);
+  };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
 
-    // ✅ Basic client-side validation
-    if (!validateEmail(email)) {
-      return setError("Please enter a valid email address.");
+    if (mobile.length !== 10) {
+      setMessage("Mobile number must be exactly 10 digits");
+      return;
     }
 
-    if (password.length < 6) {
-      return setError("Password must be at least 6 characters long.");
+    if (!passwordRegex.test(password)) {
+      setMessage(
+        "Password must be exactly 7 characters, include one uppercase letter and one special symbol."
+      );
+      return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) return setError(error.message);
-
-    // ✅ You can optionally close modal/drawer here if needed
-    // Or set some "isAuthenticated" state
-
-    // Removed navigate("/") to prevent route change
+    try {
+      const response = await api.loginUser(mobile, password);
+      if (response.token) {
+        localStorage.setItem("token", response.token);
+        setMessage("Login successful");
+      } else {
+        setMessage(response.message || "Login failed");
+      }
+    } catch (error: any) {
+      setMessage(error.message || "An error occurred");
+    }
   };
 
   return (
-    <form onSubmit={handleSignIn} className="space-y-4">
-      <Input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <Input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <button
-        type="submit"
-        className="bg-black text-white px-4 py-2 rounded w-full"
-      >
-        Sign In
-      </button>
-    </form>
+    <div className="signin-container">
+      <form onSubmit={handleSubmit} className="signin-form">
+        <label htmlFor="mobile">
+          <b>Mobile Number</b>
+        </label>
+        <input
+          id="mobile"
+          type="tel"
+          placeholder="Enter 10-digit mobile number"
+          value={mobile}
+          onChange={handleMobileChange}
+          required
+          pattern="\d{10}"
+          title="Enter exactly 10 digits"
+          autoComplete="tel"
+        />
+        <label htmlFor="password">
+          <b>Password</b>
+        </label>
+        <input
+          id="password"
+          type="password"
+          placeholder="7-character password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          maxLength={7}
+          title="Password must be exactly 7 characters, include one uppercase and one special symbol"
+          autoComplete="current-password"
+        />
+        <button type="submit" className="btn-primary">
+          Sign In
+        </button>
+        {message && <p className="message">{message}</p>}
+        <div className="signup-link-container">
+          <span>Don’t have an account? </span>
+          <button
+            type="button"
+            className="signup-link"
+            onClick={onSwitch}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#6a67ce",
+              fontWeight: 600,
+              textDecoration: "underline",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Sign up
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
