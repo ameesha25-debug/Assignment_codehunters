@@ -288,6 +288,20 @@ app.get("/api/category/:parentSlug/:subSlug", async (req, res) => {
   res.json({ parent, subcategory: sub, siblings, products });
 });
 
+
+// server.js
+app.get("/api/product/:id", async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabaseAdmin
+    .from("products")
+    .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+    .eq("id", id)
+    .single();
+  if (error || !data) return res.status(404).json({ error: "Not found" });
+  res.json(data);
+});
+
+
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () =>
   console.log(`API running at http://localhost:${port}`)
