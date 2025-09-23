@@ -11,6 +11,84 @@ import SignUpForm from "@/components/forms/SignUpForm";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
+// Simple dropdown without external deps, matches Lifestyle-style list
+function AccountMenu({
+  name,
+  credit = 0,
+  onNavigate,
+  onSignOut,
+}: {
+  name: string;
+  credit?: number;
+  onNavigate: (to: string) => void;
+  onSignOut: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-full border p-2 hover:bg-zinc-50"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        title={name}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="8" r="4" stroke="currentColor" />
+          <path d="M4 20c1.8-3.2 5-5 8-5s6.2 1.8 8 5" stroke="currentColor" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 mt-2 w-72 rounded-md border bg-white shadow-lg z-50"
+          onMouseLeave={() => setOpen(false)}
+        >
+          <div className="py-2">
+            {[
+              { label: "My Account", to: "/account" },
+              { label: "Favourites", to: "/wishlist" },
+              { label: "Order History", to: "/orders" },
+              { label: "My Addresses", to: "/addresses" },
+              { label: "Payment", to: "/payment" },
+              { label: `My Credit ₹${credit ?? 0}`, to: "/wallet" },
+              { label: "Communication", to: "/communication" },
+              { label: "Reviews", to: "/reviews" },
+              { label: "Click & Collect", to: "/click-collect" },
+              { label: "Landmark Rewards", to: "/rewards" },
+            ].map((item) => (
+              <button
+                key={item.label}
+                role="menuitem"
+                className="w-full text-left px-4 py-2 hover:bg-zinc-50"
+                onClick={() => {
+                  setOpen(false);
+                  onNavigate(item.to);
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+            <div className="my-2 h-px bg-zinc-200" />
+            <button
+              role="menuitem"
+              className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+              onClick={async () => {
+                await onSignOut();
+                setOpen(false);
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);
@@ -41,43 +119,35 @@ export default function Header() {
     }
   }
 
-  const { user, signIn, signOut } = useAuth();
-  
-  const onSignOut = () => {
-    signOut();
+  const { user, signOut, reloadUser } = useAuth() as ReturnType<
+    typeof useAuth
+  > & {
+    reloadUser?: () => Promise<void>;
+  };
+
+  const onSignOut = async () => {
+    await signOut();
     navigate("/");
   };
 
-  // Use shared API helpers to avoid duplicate URLs and parsing issues
+  // Using cookie sessions: post credentials; server sets cookies.
   const handleSignIn = async (form: { mobile: string; password: string }) => {
-    try {
-      const data = await api.loginUser(form.mobile, form.password);
-      if (data?.token) {
-        signIn(data.token, data.user);
-        alert("Login successful");
-        setAuthOpen(false);
-        navigate("/", { replace: true });
-      } else {
-        alert(data?.message || "Login failed");
-      }
-    } catch (e: any) {
-      alert(e?.message || "Login failed");
+    await api.loginUser(form.mobile, form.password);
+    setAuthOpen(false);
+    if (reloadUser) {
+      await reloadUser();
+    } else {
+      window.location.reload();
     }
   };
 
   const handleSignUp = async (form: { mobile: string; password: string }) => {
-    try {
-      const data = await api.registerUser(form.mobile, form.password);
-      if (data?.token) {
-        signIn(data.token, data.user);
-        alert("Registration successful");
-        setAuthOpen(false);
-        navigate("/", { replace: true });
-      } else {
-        alert(data?.message || "Registration failed");
-      }
-    } catch (e: any) {
-      alert(e?.message || "Registration failed");
+    await api.registerUser(form.mobile, form.password);
+    setAuthOpen(false);
+    if (reloadUser) {
+      await reloadUser();
+    } else {
+      window.location.reload();
     }
   };
 
@@ -154,7 +224,6 @@ export default function Header() {
 
         {/* Right cluster */}
         <div className="ml-auto flex items-center gap-1 md:gap-4 pr-1 lg:pr-10">
-
           {!user ? (
             <Button
               onClick={() => {
@@ -166,27 +235,13 @@ export default function Header() {
               Sign up / Sign in
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/account")}
-                className="rounded-full border p-2"
-                aria-label="Account"
-                title={user.name || user.mobile || "Account"}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="8" r="4" stroke="currentColor" />
-                  <path d="M4 20c1.8-3.2 5-5 8-5s6.2 1.8 8 5" stroke="currentColor" />
-                </svg>
-              </button>
-              <button
-                onClick={onSignOut}
-                className="rounded border px-3 py-1.5 text-sm"
-              >
-                Sign out
-              </button>
-            </div>
+            <AccountMenu
+              name={user.name || (user as any).mobile || "Account"}
+              credit={(user as any).credit ?? 0}
+              onNavigate={(to) => navigate(to)}
+              onSignOut={onSignOut}
+            />
           )}
-
 
           <Link
             to="/wishlist"
@@ -224,37 +279,21 @@ export default function Header() {
         <Sheet open={authOpen} onOpenChange={setAuthOpen}>
           <SheetContent side="right" className="w-full max-w-md p-6">
             <h2 className="text-xl font-semibold mb-4">
-              {mode === "signin" ? "Sign In to your account" : "Create a new account"}
+              {mode === "signin"
+                ? "Sign In to your account"
+                : "Create a new account"}
             </h2>
 
             {mode === "signin" ? (
-              <>
-                <SignInForm onSwitch={() => setMode("signup")} onSubmit={handleSignIn} />
-                <p className="mt-4 text-sm">
-                  Don’t have an account?{" "}
-                  <button
-                    onClick={() => setMode("signup")}
-                    className="text-blue-600 underline"
-                    type="button"
-                  >
-                    Sign up
-                  </button>
-                </p>
-              </>
+              <SignInForm
+                onSwitch={() => setMode("signup")}
+                onSubmit={handleSignIn}
+              />
             ) : (
-              <>
-                <SignUpForm onSwitch={() => setMode("signin")} onSubmit={handleSignUp} />
-                <p className="mt-4 text-sm">
-                  Already have an account?{" "}
-                  <button
-                    onClick={() => setMode("signin")}
-                    className="text-blue-600 underline"
-                    type="button"
-                  >
-                    Sign in
-                  </button>
-                </p>
-              </>
+              <SignUpForm
+                onSwitch={() => setMode("signin")}
+                onSubmit={handleSignUp}
+              />
             )}
           </SheetContent>
         </Sheet>
@@ -262,4 +301,3 @@ export default function Header() {
     </header>
   );
 }
-

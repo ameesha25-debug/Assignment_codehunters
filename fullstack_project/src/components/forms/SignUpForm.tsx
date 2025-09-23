@@ -1,79 +1,93 @@
-import React, { useState } from "react";
-import "./SignInForm.css"; // Reuse CSS for consistent styling
+import React, { useState } from 'react';
 
-const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7}$/;
-
-interface Props {
+type Props = {
   onSwitch: () => void;
-  onSubmit: (form: { mobile: string; password: string }) => void;
-}
+  onSubmit: (form: { mobile: string; password: string }) => Promise<void> | void;
+};
+
+const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{7}$/;
 
 export default function SignUpForm({ onSwitch, onSubmit }: Props) {
-  const [mobile, setMobile] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [mobile, setMobile] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value.replace(/\D/g, "");
+  function handleMobileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const input = e.target.value.replace(/\D/g, '');
     setMobile(input.slice(0, 10));
-  };
+  }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
 
     if (mobile.length !== 10) {
-      setMessage("Mobile number must be exactly 10 digits");
+      setError('Mobile number must be exactly 10 digits');
       return;
     }
-
     if (!passwordRegex.test(password)) {
-      setMessage(
-        "Password must be exactly 7 characters, include one uppercase letter and one special symbol."
-      );
+      setError('Password must be exactly 7 characters, include one uppercase letter and one special symbol.');
       return;
     }
 
-    setMessage("");
-    onSubmit({ mobile, password });
-  };
+    setSubmitting(true);
+    try {
+      await onSubmit({ mobile, password });
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Sign up failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div className="signin-container">
-      <form onSubmit={handleSubmit} className="signin-form">
-        <label htmlFor="mobile">
-          <b>Mobile Number</b>
-        </label>
+    <form onSubmit={handleSubmit} className="space-y-4" aria-label="Sign up form">
+      <div className="space-y-1.5">
+        <label htmlFor="mobile" className="text-sm font-medium text-zinc-700">Mobile number</label>
         <input
           id="mobile"
-          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-300"
           placeholder="Enter 10-digit mobile number"
           value={mobile}
           onChange={handleMobileChange}
           required
         />
-        <label htmlFor="password">
-          <b>Password</b>
-        </label>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="text-sm font-medium text-zinc-700">Password</label>
         <input
           id="password"
           type="password"
+          className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-300"
           placeholder="7-character password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
           maxLength={7}
+          required
         />
-        <button type="submit" className="btn-primary">
-          Sign Up
+        <p className="text-xs text-zinc-500">Must be 7 characters, include 1 uppercase and 1 special symbol.</p>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full rounded-md bg-amber-500 py-2.5 text-white font-semibold hover:bg-amber-600 disabled:opacity-60"
+      >
+        {submitting ? 'Signing up…' : 'Sign Up'}
+      </button>
+
+      <p className="text-sm text-zinc-700">
+        Already have an account?{' '}
+        <button type="button" onClick={onSwitch} className="text-blue-600 underline">
+          Sign in
         </button>
-        {message && <p className="message">{message}</p>}
-        <div className="signup-link-container">
-          <span>Already have an account? </span>
-          <button type="button" className="signup-link" onClick={onSwitch}>
-            Sign In
-          </button>
-        </div>
-      </form>
-    </div>
+      </p>
+    </form>
   );
 }

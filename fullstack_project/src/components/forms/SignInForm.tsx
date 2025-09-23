@@ -1,79 +1,91 @@
-import React, { useState } from "react";
-import "./SignInForm.css";
+import React, { useState } from 'react';
 
-const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{7}$/;
 
-interface Props {
+type Props = {
+  onSubmit: (form: { mobile: string; password: string }) => Promise<void> | void;
   onSwitch: () => void;
-  onSubmit: (form: { mobile: string; password: string }) => void;
-}
+};
 
-export default function SignInForm({ onSwitch, onSubmit }: Props) {
-  const [mobile, setMobile] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
+export default function SignInForm({ onSubmit, onSwitch }: Props) {
+  const [mobile, setMobile] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value.replace(/\D/g, "");
-    setMobile(input.slice(0, 10));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (mobile.length !== 10) {
-      setMessage("Mobile number must be exactly 10 digits");
-      return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onSubmit({ mobile: mobile.trim(), password });
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Sign in failed');
+    } finally {
+      setSubmitting(false);
     }
-
-    if (!passwordRegex.test(password)) {
-      setMessage(
-        "Password must be exactly 7 characters, include one uppercase letter and one special symbol."
-      );
-      return;
-    }
-
-    setMessage("");
-    onSubmit({ mobile, password });
-  };
+  }
 
   return (
-    <div className="signin-container">
-      <form onSubmit={handleSubmit} className="signin-form">
-        <label htmlFor="mobile">
-          <b>Mobile Number</b>
+    <form onSubmit={handleSubmit} className="space-y-4" aria-label="Sign in form">
+      <div className="space-y-1.5">
+        <label htmlFor="mobile" className="text-sm font-medium text-zinc-700">
+          Mobile number
         </label>
         <input
           id="mobile"
-          type="tel"
-          placeholder="Enter 10-digit mobile number"
+          inputMode="numeric"
+          autoComplete="tel"
+          className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-zinc-300"
+          placeholder="Enter mobile number"
           value={mobile}
-          onChange={handleMobileChange}
+          onChange={(e) => setMobile(e.target.value)}
           required
         />
-        <label htmlFor="password">
-          <b>Password</b>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="password" className="text-sm font-medium text-zinc-700">
+          Password
         </label>
-        <input
-          id="password"
-          type="password"
-          placeholder="7-character password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          maxLength={7}
-        />
-        <button type="submit" className="btn-primary">
-          Sign In
-        </button>
-        {message && <p className="message">{message}</p>}
-        <div className="signup-link-container">
-          <span>Don’t have an account? </span>
-          <button type="button" className="signup-link" onClick={onSwitch}>
-            Sign up
+        <div className="relative">
+          <input
+            id="password"
+            type={showPwd ? 'text' : 'password'}
+            autoComplete="current-password"
+            className="w-full rounded-md border px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-zinc-300"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            aria-label={showPwd ? 'Hide password' : 'Show password'}
+            onClick={() => setShowPwd((v) => !v)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-600 hover:text-zinc-900"
+          >
+            {showPwd ? 'Hide' : 'Show'}
           </button>
         </div>
-      </form>
-    </div>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full rounded-md bg-amber-500 py-2.5 text-white font-semibold hover:bg-amber-600 disabled:opacity-60"
+      >
+        {submitting ? 'Signing in…' : 'Sign In'}
+      </button>
+
+      <p className="text-sm text-zinc-700">
+        Don’t have an account?{' '}
+        <button type="button" onClick={onSwitch} className="text-blue-600 underline">
+          Sign up
+        </button>
+      </p>
+    </form>
   );
 }
