@@ -84,6 +84,7 @@ const KNOWN_SIZES = [
   "Free Size",
 ];
 
+// ---------------- utilities for search ----------------
 function normalize(s: string) {
   return s.trim().toLowerCase();
 }
@@ -100,14 +101,8 @@ function buildIlikePatterns(q: string) {
   const base = normalizeForSearch(q);
   const tokens = base.split(" ").filter(Boolean);
   const patterns = new Set<string>();
-
-  // full phrase
-  patterns.add(`%${base}%`);
-
-  // individual tokens
+  if (base) patterns.add(`%${base}%`);
   tokens.forEach((t) => patterns.add(`%${t}%`));
-
-  // common apparel synonyms
   const synonyms: Record<string, string[]> = {
     tshirt: ["tshirt", "t shirt", "tee"],
     "t shirt": ["tshirt", "tee", "t shirt"],
@@ -115,10 +110,53 @@ function buildIlikePatterns(q: string) {
   tokens.forEach((t) => {
     if (synonyms[t]) synonyms[t].forEach((s) => patterns.add(`%${s}%`));
   });
-
   return Array.from(patterns);
 }
 
+// DB helpers
+async function categoriesBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id,slug,parent_id")
+    .eq("slug", slug)
+    .single();
+  if (error && (error as any).code !== "PGRST116") throw error; // allow not found
+  return (data ?? null) as {
+    id: string;
+    slug: string;
+    parent_id: string | null;
+  } | null;
+}
+
+async function categoryById(id: string) {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id,slug,parent_id")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as { id: string; slug: string; parent_id: string | null };
+}
+
+async function searchProductsFTS(query: string) {
+  const patterns = buildIlikePatterns(query);
+  if (patterns.length === 0) return [];
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,image_url,price,category_id")
+    .or(patterns.map((p) => `name.ilike.${p}`).join(","))
+    .limit(48);
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: string;
+    name: string;
+    image_url: string | null;
+    price: number;
+    category_id: string;
+  }>;
+}
+
+// ---------------- main API object ----------------
 export const api = {
   // homepage roots
   roots: () => http<Category[]>("/api/categories"),
