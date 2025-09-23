@@ -7,6 +7,7 @@ import EmailSubscribe from "@/components/forms/EmailSubscribe";
 import Footer from "@/components/common/Footer";
 // import type { Product } from "@/components/products/ProductCard";
 import CategoryHeroCarousel from "@/components/home/CategoryHeroCarousel";
+
 import BenefitsStrip from "@/components/home/BenefitsStrip";
 
 

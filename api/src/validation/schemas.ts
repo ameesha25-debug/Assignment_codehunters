@@ -1,12 +1,12 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const PaginationQuery = z.object({
-  search: z.string().trim().optional().default(""),
+  search: z.string().trim().optional().default(''),
   category: z.string().trim().optional(),
-  sort: z.enum(["price", "rating", "name", "new"]).optional().default("new"),
-  order: z.enum(["asc", "desc"]).optional().default("desc"),
+  sort: z.enum(['price', 'rating', 'name', 'new']).optional().default('new'),
+  order: z.enum(['asc', 'desc']).optional().default('desc'),
   page: z.coerce.number().int().positive().optional().default(1),
-  limit: z.coerce.number().int().positive().max(100).optional().default(12)
+  limit: z.coerce.number().int().positive().max(100).optional().default(12),
 });
 
 export const CreateProductBody = z.object({
@@ -15,16 +15,31 @@ export const CreateProductBody = z.object({
   price: z.coerce.number().positive(),
   category: z.string().min(2),
   badge: z.string().optional(),
-  rating: z.coerce.number().min(0).max(5).optional()
+  rating: z.coerce.number().min(0).max(5).optional(),
 });
 
+// Keep email versions if other parts use them
 export const SignupBody = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  name: z.string().optional()
+  name: z.string().optional(),
 });
-
 export const LoginBody = z.object({
   email: z.string().email(),
-  password: z.string().min(6)
+  password: z.string().min(6),
 });
+
+// Add mobile-based auth bodies used by current authController
+export const MobileSignupBody = z.object({
+  mobile: z.string().min(8).max(15),
+  password: z.string().min(6),
+  name: z.string().optional(),
+});
+
+export const MobileLoginBody = z.object({
+  mobile: z.string().min(8).max(15),
+  password: z.string().min(6),
+});
+
+export type TMobileSignup = z.infer<typeof MobileSignupBody>;
+export type TMobileLogin = z.infer<typeof MobileLoginBody>;
