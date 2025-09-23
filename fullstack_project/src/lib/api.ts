@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
 
 async function safeJson(res: Response) {
@@ -58,7 +59,7 @@ export type SearchResolution =
         name: string;
         image_url: string | null;
         price: number;
-        category_id: string; // ensure category_id is present
+        category_id: string;
       }>;
       query: string;
     }
@@ -88,7 +89,6 @@ function normalize(s: string) {
 }
 
 function normalizeForSearch(s: string) {
-  // lower, remove hyphens/dashes and punctuation → space, collapse spaces
   return s
     .toLowerCase()
     .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, " ")
@@ -97,7 +97,7 @@ function normalizeForSearch(s: string) {
 }
 
 function buildIlikePatterns(q: string) {
-  const base = normalizeForSearch(q); // e.g., "graphic t shirt"
+  const base = normalizeForSearch(q);
   const tokens = base.split(" ").filter(Boolean);
   const patterns = new Set<string>();
 
@@ -162,7 +162,6 @@ export const api = {
     }>;
   },
 
-
   productById: async (id: string) => {
     if (!id || id === "null") throw new Error("Invalid product id");
     const { data, error } = await supabase
@@ -175,7 +174,6 @@ export const api = {
     if (error) throw error;
     return data as Product;
   },
-
 
   categorySiblings: async (categoryId: string) => {
     const { data: me, error: e1 } = await supabase
@@ -251,6 +249,7 @@ export const api = {
     if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
     return data;
   },
+}; // IMPORTANT: close the api object before declaring helper functions
 
 // helper function used by some endpoints
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -272,6 +271,7 @@ export async function fetchHeroCategories(
     .in("slug", slugs);
   if (error) throw error;
 
+  // Preserve the requested order
   const bySlug = new Map((data ?? []).map((c: any) => [c.slug, c]));
   return slugs
     .map((s) => bySlug.get(s))

@@ -42,8 +42,7 @@ export default function Header() {
   }
 
   const { user, signIn, signOut } = useAuth();
-  const navigate = useNavigate();
-
+  
   const onSignOut = () => {
     signOut();
     navigate("/");
