@@ -5,6 +5,8 @@ import CategoryPLP from './pages/CategoryPLP';
 import SubcategoryPLP from './pages/SubcategoryPLP'
 import AuthPage from './pages/AuthPage';
 import ProductPDP from './pages/ProductPDP';
+import SearchPLP from "@/pages/SearchPLP";
+
 export default function App() {
   return (
     
@@ -15,6 +17,7 @@ export default function App() {
         <Route path="/category/:slug" element={<CategoryPLP />} />
         <Route path="/category/:parentSlug/:subSlug" element={<SubcategoryPLP />} />
         <Route path="/product/:id" element={<ProductPDP />} />
+        <Route path="/search" element={<SearchPLP />} />
       </Routes>
   );
 }

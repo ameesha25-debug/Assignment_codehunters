@@ -43,6 +43,82 @@ export type CategoryHero = {
   image_url: string | null;
 };
 
+export type SearchResolution =
+  | { type: "category"; category: { id: string; slug: string } }
+  | {
+      type: "subcategory";
+      category: { id: string; slug: string };
+      parent: { id: string; slug: string };
+    }
+  | { type: "size"; size: string }
+  | {
+      type: "products";
+      products: Array<{
+        id: string;
+        name: string;
+        image_url: string | null;
+        price: number;
+        category_id: string; // ensure category_id is present
+      }>;
+      query: string;
+    }
+  | { type: "none"; query: string };
+
+const KNOWN_SIZES = [
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "XXL",
+  "8-9 Y",
+  "9-10 Y",
+  "10-11 Y",
+  "11-12 Y",
+  "32",
+  "34",
+  "36",
+  "38",
+  "40",
+  "Free Size",
+];
+
+function normalize(s: string) {
+  return s.trim().toLowerCase();
+}
+
+function normalizeForSearch(s: string) {
+  // lower, remove hyphens/dashes and punctuation → space, collapse spaces
+  return s
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildIlikePatterns(q: string) {
+  const base = normalizeForSearch(q); // e.g., "graphic t shirt"
+  const tokens = base.split(" ").filter(Boolean);
+  const patterns = new Set<string>();
+
+  // full phrase
+  patterns.add(`%${base}%`);
+
+  // individual tokens
+  tokens.forEach((t) => patterns.add(`%${t}%`));
+
+  // common apparel synonyms
+  const synonyms: Record<string, string[]> = {
+    tshirt: ["tshirt", "t shirt", "tee"],
+    "t shirt": ["tshirt", "tee", "t shirt"],
+  };
+  tokens.forEach((t) => {
+    if (synonyms[t]) synonyms[t].forEach((s) => patterns.add(`%${s}%`));
+  });
+
+  return Array.from(patterns);
+}
+
 export const api = {
   // homepage roots
   roots: () => http<Category[]>("/api/categories"),
@@ -86,6 +162,7 @@ export const api = {
     }>;
   },
 
+
   productById: async (id: string) => {
     if (!id || id === "null") throw new Error("Invalid product id");
     const { data, error } = await supabase
@@ -98,6 +175,7 @@ export const api = {
     if (error) throw error;
     return data as Product;
   },
+
 
   categorySiblings: async (categoryId: string) => {
     const { data: me, error: e1 } = await supabase
@@ -173,7 +251,6 @@ export const api = {
     if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
     return data;
   },
-};
 
 // helper function used by some endpoints
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -186,14 +263,15 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 // fetch hero categories by slugs, preserving order
-export async function fetchHeroCategories(slugs: string[]): Promise<CategoryHero[]> {
+export async function fetchHeroCategories(
+  slugs: string[]
+): Promise<CategoryHero[]> {
   const { data, error } = await supabase
     .from("categories")
     .select("id,name,slug,image_url")
     .in("slug", slugs);
   if (error) throw error;
 
-  // Preserve the requested order
   const bySlug = new Map((data ?? []).map((c: any) => [c.slug, c]));
   return slugs
     .map((s) => bySlug.get(s))

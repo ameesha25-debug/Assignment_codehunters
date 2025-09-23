@@ -5,14 +5,41 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Heart, ShoppingBag, Menu } from "lucide-react";
 import SearchBar from "@/components/common/SearchBar";
+
 import SignInForm from "@/components/forms/SignInForm";
 import SignUpForm from "@/components/forms/SignUpForm";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 
+
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const navigate = useNavigate();
+
+  async function handleSearch(q: string) {
+    const query = q.trim();
+    if (!query) return;
+    const res = await api.resolveSearch(query);
+    switch (res.type) {
+      case "category":
+        navigate(`/category/${res.category.slug}`);
+        break;
+      case "subcategory":
+        navigate(`/category/${res.parent.slug}/${res.category.slug}`);
+        break;
+      case "size":
+        navigate(`/search/size/${encodeURIComponent(res.size)}`);
+        break;
+      case "products":
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+        break;
+      case "none":
+      default:
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+        break;
+    }
+  }
 
   const { user, signIn, signOut } = useAuth();
   const navigate = useNavigate();
@@ -121,12 +148,14 @@ export default function Header() {
             <SearchBar
               placeholder="Search for products, brands and more"
               className="w-full"
+              onSubmitQuery={handleSearch}
             />
           </div>
         </div>
 
         {/* Right cluster */}
         <div className="ml-auto flex items-center gap-1 md:gap-4 pr-1 lg:pr-10">
+
           {!user ? (
             <Button
               onClick={() => {
@@ -159,6 +188,7 @@ export default function Header() {
             </div>
           )}
 
+
           <Link
             to="/wishlist"
             className="grid place-items-center px-2 py-1 text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
@@ -184,6 +214,7 @@ export default function Header() {
         <SearchBar
           placeholder="Search for products, brands and more"
           className="w-full"
+          onSubmitQuery={handleSearch}
         />
       </div>
 
@@ -232,3 +263,4 @@ export default function Header() {
     </header>
   );
 }
+
