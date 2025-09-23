@@ -1,293 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/common/Header";
-import TextCategoryBar from "@/components/common/TextCategoryBar"; // adjust path if needed
-import { api } from "@/lib/api";
+import TextCategoryBar from "@/components/common/TextCategoryBar";
+import { api, type Product, type Category } from "@/lib/api";
+import { sortProducts, type SortKey } from "@/lib/sorters";
 
-type ProductRow = {
-  id: string;
-  name: string;
-  image_url: string | null;
-  price: number;
-  category_id: string;
-  rating?: number | null;
-  review_count?: number | null;
-};
+import {
+  SkeletonFilterColumn,
+  SkeletonGrid,
+  SkeletonRightHeader,
+  SkeletonEmptyState,
+} from "@/components/skeleton/PLPskeleton";
 
-type CategoryRow = {
-  id: string;
-  name: string;
-  slug: string;
-  parent_id: string | null;
-};
-
-export default function SearchPLP() {
-  const [params] = useSearchParams();
-  const q = (params.get("q") ?? "").trim();
-  const { pathname } = useLocation();
-
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [cats, setCats] = useState<CategoryRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      setLoading(true);
-
-      const res = await api.resolveSearch(q);
-      if (!active) return;
-
-      if (res.type === "products") {
-        const items = (res.products as any[]).map((p) => ({
-          id: p.id,
-          name: p.name,
-          image_url: p.image_url ?? null,
-          price: p.price ?? 0,
-          category_id: p.category_id,
-          rating: p.rating ?? null,
-          review_count: p.review_count ?? null,
-        })) as ProductRow[];
-
-        setProducts(items);
-
-        const catIds = Array.from(new Set(items.map((p) => p.category_id)));
-        if (catIds.length > 0) {
-          const fetched = (await api.categoriesByIds(catIds)) as any as CategoryRow[];
-          const parentIds = Array.from(
-            new Set(fetched.filter((c) => c.parent_id).map((c) => c.parent_id as string))
-          );
-
-          let parents: CategoryRow[] = [];
-          if (parentIds.length > 0) {
-            parents = (await api.categoriesByIds(parentIds)) as any as CategoryRow[];
-          }
-
-          const topLevel: Record<string, CategoryRow> = {};
-          for (const c of fetched) {
-            if (c.parent_id) {
-              const parent = parents.find((p) => p.id === c.parent_id);
-              if (parent) topLevel[parent.id] = parent;
-            } else {
-              topLevel[c.id] = c;
-            }
-          }
-          setCats(Object.values(topLevel));
-        } else {
-          setCats([]);
-        }
-
-        setLoading(false);
-        return;
-      }
-
-      setProducts([]);
-      setCats([]);
-      setLoading(false);
-    }
-    load();
-    return () => {
-      active = false;
-    };
-  }, [q]);
-
-  const resultCount = useMemo(() => products.length, [products]);
-
-  const navItems = [
-    { name: "Women", slug: "women" },
-    { name: "Men", slug: "men" },
-    { name: "Kids", slug: "kids" },
-    { name: "Footwear", slug: "footwear" },
-    { name: "Bags", slug: "bags" },
-    { name: "Beauty", slug: "beauty" },
-    { name: "Watches", slug: "watches" },
-  ];
-  const activeTop = navItems.find((i) => pathname.startsWith(`/category/${i.slug}`))?.slug;
-
-  return (
-    <>
-      <Header />
-
-      {/* Category text header (no extra border wrapper) */}
-      <div>
-        <div className="container">
-          <TextCategoryBar kind="level1" items={navItems} activeSlug={activeTop} />
-        </div>
-      </div>
-
-      <main className="container">
-        <section className="grid grid-cols-12 gap-6 mt-0">
-          {/* Left: filters */}
-          <aside className="hidden md:block md:col-span-3">
-            <div className="sticky top-16 pt-0 mt-0">
-              {/* Heading row with bottom gap */}
-              <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="text-sm font-semibold">FILTERS</h2>
-                <button className="text-xs text-indigo-600 hover:underline">Clear all</button>
-              </div>
-
-              {/* Stack of filter blocks with vertical spacing */}
-              <div className="space-y-4">
-                <FilterBlock title="Price">
-                  <div className="h-2 rounded-full bg-muted" />
-                  <div className="mt-2 flex items-center gap-2">
-                    <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Min" />
-                    <span>—</span>
-                    <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Max" />
-                  </div>
-                </FilterBlock>
-
-                <FilterBlock title="Color">
-                  <div className="flex flex-wrap gap-2">
-                    {["Black", "White", "Blue", "Pink", "Green"].map((c) => (
-                      <button key={c} className="rounded-full border px-3 py-1 text-sm hover:bg-muted">
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </FilterBlock>
-
-                <FilterBlock title="Size">
-                  <div className="flex flex-wrap gap-2">
-                    {["XS", "S", "M", "L", "XL"].map((s) => (
-                      <button key={s} className="rounded border px-3 py-1 text-sm hover:bg-muted">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </FilterBlock>
-
-                <FilterBlock title="Fit">
-                  <div className="flex flex-wrap gap-2">
-                    {["Slim", "Regular", "Relaxed"].map((f) => (
-                      <button key={f} className="rounded border px-3 py-1 text-sm hover:bg-muted">
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-                </FilterBlock>
-
-                <FilterBlock title="Discount">
-                  <div className="flex flex-col gap-2 text-sm">
-                    {["10% and above", "20% and above", "30% and above", "50% and above"].map((d) => (
-                      <label key={d} className="inline-flex items-center gap-2">
-                        <input type="checkbox" className="rounded border" />
-                        <span>{d}</span>
-                      </label>
-                    ))}
-                  </div>
-                </FilterBlock>
-              </div>
-            </div>
-          </aside>
-
-          {/* Right: content above grid and grid */}
-          <div className="col-span-12 md:col-span-9">
-            {/* Breadcrumbs */}
-            <nav className="mb-3 text-sm text-gray-500 flex items-center" aria-label="Breadcrumb">
-              <Link to="/" className="text-gray-500 hover:text-yellow-500 hover:underline">Home</Link>
-              <span className="mx-2">›</span>
-              <span className="text-gray-500">Search</span>
-              {q && (
-                <>
-                  <span className="mx-2">›</span>
-                  <span className="text-gray-700">{q}</span>
-                </>
-              )}
-            </nav>
-
-            {/* Shop For + Sort */}
-            <div className="flex items-center justify-between pb-2">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-sm font-semibold tracking-wide text-zinc-700">Shop For</span>
-                <nav className="flex flex-wrap gap-2">
-                  {cats.map((c) => (
-                    <Link
-                      key={c.id}
-                      to={`/category/${c.slug}`}
-                      className="rounded-full border px-3 py-1 text-sm hover:bg-zinc-50"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-              <div className="ml-6 flex items-center gap-2">
-                <span className="text-xs font-medium text-zinc-600">SORT BY</span>
-                <select className="rounded-md border bg-white px-3 py-2 text-sm" defaultValue="relevance">
-                  <option value="relevance">Relevance</option>
-                  <option value="price_low">Price: Low to High</option>
-                  <option value="price_high">Price: High to Low</option>
-                  <option value="new">Newest First</option>
-                </select>
-              </div>
-            </div>
-
-            {/* You searched for */}
-            <div className="mb-3 text-sm">
-              You searched for <span className="font-semibold">{q}</span>:{" "}
-              <span className="text-muted-foreground">{resultCount} products available</span>
-            </div>
-
-            {loading ? (
-              <div className="py-8 text-sm text-muted-foreground">Loading…</div>
-            ) : resultCount === 0 ? (
-              <NoMatches q={q} />
-            ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {products
-                  .filter((p) => !!p?.id)
-                  .map((p) => {
-                    const title = p.name ?? "";
-                    const img = p.image_url ?? `https://picsum.photos/seed/${p.id}/600/800`;
-                    return (
-                      <Link
-                        key={p.id}
-                        to={`/product/${p.id}`}
-                        className="group relative overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow"
-                        aria-label={title}
-                      >
-                        <div className="aspect-[3/4] overflow-hidden bg-muted">
-                          <img
-                            src={img}
-                            alt={title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            loading="lazy"
-                          />
-                        </div>
-
-                        <div className="p-3">
-                          <h3 className="line-clamp-2 text-sm font-medium">{title}</h3>
-                          <div className="mt-1 text-sm text-foreground">₹{p.price}</div>
-                          {p.rating != null && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {p.rating} ★ · {p.review_count ?? 0}
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          className="absolute right-2 top-2 hidden rounded-full border bg-white p-2 text-foreground shadow-sm group-hover:inline-flex"
-                          aria-label="Add to wishlist"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ♡
-                        </button>
-                      </Link>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <div className="h-10" />
-      </main>
-    </>
-  );
-}
-
-/* Reusable filter block */
+/* Simple filter block UI */
 function FilterBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border bg-white p-4">
@@ -300,18 +25,315 @@ function FilterBlock({ title, children }: { title: string; children: React.React
   );
 }
 
-function NoMatches({ q }: { q: string }) {
+const staticTopTabs = [
+  { name: "Women", slug: "women" },
+  { name: "Men", slug: "men" },
+  { name: "Kids", slug: "kids" },
+  { name: "Footwear", slug: "footwear" },
+  { name: "Bags", slug: "bags" },
+  { name: "Beauty", slug: "beauty" },
+  { name: "Watches", slug: "watches" },
+];
+
+type CardWithPath = Product & {
+  _uiParentName?: string | null;
+  _uiParentSlug?: string | null;
+};
+
+export default function SearchPLP() {
+  const [params, setParams] = useSearchParams();
+  const qParam = params.get("q")?.trim() ?? "";
+  const q = qParam.slice(0, 120);
+  const scope = params.get("scope")?.trim() ?? "";
+  const navigate = useNavigate();
+
+  const [products, setProducts] = useState<CardWithPath[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortKey>("recommended");
+  const [parents, setParents] = useState<Array<{ name: string; slug: string }>>([]);
+
+  // recent searches
+  const recentKey = "recent_searches_v1";
+  const [recent, setRecent] = useState<string[]>([]);
+
+  useEffect(() => {
+    const list = JSON.parse(localStorage.getItem(recentKey) || "[]") as string[];
+    setRecent(list.slice(0, 5));
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+
+    async function resolveParentMeta(items: Product[]): Promise<CardWithPath[]> {
+      const uniqLeafIds = Array.from(new Set(items.map((p) => p.category_id)));
+      const leafCats = (await api.categoriesByIds(uniqLeafIds).catch(() => [])) as Category[];
+      const leafById = new Map(leafCats.map((c) => [c.id, c]));
+
+      const uniqParentIds = Array.from(
+        new Set(leafCats.map((c) => c.parent_id).filter(Boolean) as string[])
+      );
+      const parentCats = (await api.categoriesByIds(uniqParentIds).catch(() => [])) as Category[];
+      const parentById = new Map(parentCats.map((c) => [c.id, c]));
+
+      return items.map((p) => {
+        const leaf = leafById.get(p.category_id);
+        const parent = leaf?.parent_id ? parentById.get(leaf.parent_id) : undefined;
+        return {
+          ...p,
+          _uiParentName: parent?.name ?? null,
+          _uiParentSlug: parent?.slug ?? null,
+        };
+      });
+    }
+
+    const run = async () => {
+      if (!q) {
+        setProducts([]);
+        setParents([]);
+        setErr(null);
+        return;
+      }
+      setLoading(true);
+      setErr(null);
+      try {
+        const res = await api.resolveSearch(q);
+
+        // Redirect to canonical category pages if a category/subcategory match
+        if (res.type === "category") {
+          navigate(`/category/${res.category.slug}`, { replace: true });
+          return;
+        }
+        if (res.type === "subcategory") {
+          navigate(`/category/${res.parent.slug}/${res.category.slug}`, { replace: true });
+          return;
+        }
+
+        let list: Product[] = [];
+        if (res.type === "products") list = res.products as any;
+        const withMeta = list.length ? await resolveParentMeta(list) : [];
+
+        // Build parent facets and apply scope if present
+        const parentMap = new Map<string, string>();
+        withMeta.forEach((p) => {
+          if (p._uiParentSlug && p._uiParentName) parentMap.set(p._uiParentSlug, p._uiParentName);
+        });
+        const parentArr = Array.from(parentMap.entries()).map(([slug, name]) => ({ slug, name }));
+
+        const filtered = scope
+          ? withMeta.filter((p) => (p._uiParentSlug ?? "") === scope)
+          : withMeta;
+
+        if (!cancel) {
+          setProducts(filtered);
+          setParents(parentArr);
+        }
+
+        // Save recent
+        const prev = JSON.parse(localStorage.getItem(recentKey) || "[]") as string[];
+        const next = [q, ...prev.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+        localStorage.setItem(recentKey, JSON.stringify(next));
+        if (!cancel) setRecent(next);
+      } catch (e: any) {
+        if (!cancel) setErr(e?.message || "Search failed");
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancel = true;
+    };
+  }, [q, scope, navigate]);
+
+  // Use shared sorter
+  const sortedProducts = useMemo(
+    () => sortProducts(products, sort),
+    [products, sort]
+  );
+
+  const onClickScope = (slug: string | null) => {
+    const next = new URLSearchParams(params.toString());
+    if (slug) next.set("scope", slug);
+    else next.delete("scope");
+    setParams(next, { replace: true });
+  };
+
   return (
-    <div className="mx-auto max-w-3xl py-16 text-center">
-      <div className="mx-auto mb-6 h-20 w-24 opacity-70">
-        <div className="text-6xl">🔎</div>
+    <>
+      <Header />
+
+      {/* Common top bar */}
+      <div className="mb-2">
+        <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
+        <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+          <div className="container">
+            <TextCategoryBar kind="level1" basePath="/category" items={staticTopTabs} />
+          </div>
+        </div>
       </div>
-      <h1 className="text-2xl sm:text-3xl font-semibold">
-        Sorry, there are no matches for “{q}”
-      </h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Check your spelling, use different keywords and try again
-      </p>
-    </div>
+
+      <main className="container">
+        {err && <p className="mb-3 text-sm text-red-600">{err}</p>}
+
+        {/* Loading skeleton */}
+        {loading && (
+          <section className="grid grid-cols-12 gap-6 mt-0">
+            <aside className="hidden md:block md:col-span-3">
+              <SkeletonFilterColumn />
+            </aside>
+            <div className="col-span-12 md:col-span-9">
+              <SkeletonRightHeader withShopFor />
+              <SkeletonGrid count={12} />
+            </div>
+          </section>
+        )}
+
+        {/* Results with filters and right-column header */}
+        {!loading && products.length > 0 && (
+          <section className="grid grid-cols-12 gap-6 mt-0">
+            {/* Left: Filters */}
+            <aside className="hidden md:block md:col-span-3">
+              <div className="sticky top-16 pt-0 mt-0">
+                <div className="mb-3 flex items-center justify-between px-1">
+                  <h2 className="text-sm font-semibold">FILTERS</h2>
+                  <button className="text-xs text-indigo-600 hover:underline">Clear all</button>
+                </div>
+
+                <div className="space-y-4">
+                  <FilterBlock title="Price">
+                    <div className="h-2 rounded-full bg-muted" />
+                    <div className="mt-2 flex items-center gap-2">
+                      <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Min" />
+                      <span>—</span>
+                      <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Max" />
+                    </div>
+                  </FilterBlock>
+
+                  <FilterBlock title="Color">
+                    <div className="flex flex-wrap gap-2">
+                      {["Black", "White", "Blue", "Pink", "Green"].map((c) => (
+                        <button key={c} className="rounded-full border px-3 py-1 text-sm hover:bg-muted">
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </FilterBlock>
+
+                  <FilterBlock title="Size">
+                    <div className="flex flex-wrap gap-2">
+                      {["XS", "S", "M", "L", "XL"].map((s) => (
+                        <button key={s} className="rounded border px-3 py-1 text-sm hover:bg-muted">
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </FilterBlock>
+
+                  <FilterBlock title="Discount">
+                    <div className="flex flex-col gap-2 text-sm">
+                      {["10% and above", "20% and above", "30% and above", "50% and above"].map((d) => (
+                        <label key={d} className="inline-flex items-center gap-2">
+                          <input type="checkbox" className="rounded border" />
+                          <span>{d}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </FilterBlock>
+                </div>
+              </div>
+            </aside>
+
+            {/* Right: Header + Grid */}
+            <div className="col-span-12 md:col-span-9">
+              {/* Right-side header row */}
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-sm font-semibold tracking-wide text-zinc-700">
+                    Search results for “{q}”
+                  </span>
+                  {parents.length > 1 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-medium text-zinc-600">Shop For</span>
+                      <button
+                        onClick={() => onClickScope(null)}
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
+                          !scope ? "bg-black text-white" : "bg-white hover:bg-muted"
+                        }`}
+                      >
+                        All
+                      </button>
+                      {parents.map((p) => (
+                        <button
+                          key={p.slug}
+                          onClick={() => onClickScope(p.slug)}
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
+                            scope === p.slug ? "bg-black text-white" : "bg-white hover:bg-muted"
+                          }`}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="ml-6 flex items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-600">{products.length} matches</span>
+                  <span className="text-xs font-medium text-zinc-600">·</span>
+                  <span className="text-xs font-medium text-zinc-600">SORT BY</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as SortKey)}
+                    className="rounded-md border bg-white px-3 py-2 text-sm shadow-sm"
+                  >
+                    <option value="recommended">Recommended</option>
+                    <option value="price_low">Price: Low to High</option>
+                    <option value="price_high">Price: High to Low</option>
+                    <option value="new">Newest First</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Grid */}
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {sortedProducts.map((p) => (
+                  <Link
+                    key={p.id}
+                    to={`/product/${p.id}`}
+                    className="group relative overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow"
+                    aria-label={p.name}
+                  >
+                    <div className="aspect-[3/4] overflow-hidden bg-muted">
+                      <img
+                        src={p.image_url || `https://picsum.photos/seed/${p.id}/600/800`}
+                        alt={p.name}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <h3 className="line-clamp-2 text-sm font-medium">{p.name}</h3>
+                      <div className="mt-1 text-sm text-foreground">₹{p.price}</div>
+                      {p.rating != null && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {p.rating} ★ · {p.review_count ?? 0}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Empty state: no filters, no sort */}
+        {!loading && products.length === 0 && <SkeletonEmptyState />}
+
+        <div className="h-10" />
+      </main>
+    </>
   );
 }

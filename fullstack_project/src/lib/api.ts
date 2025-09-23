@@ -97,19 +97,35 @@ function normalizeForSearch(s: string) {
     .trim();
 }
 
+// Expanded to handle top/tops/tee/tees/tshirt/t shirt and pluralization
 function buildIlikePatterns(q: string) {
-  const base = normalizeForSearch(q);
-  const tokens = base.split(" ").filter(Boolean);
+  const base = normalizeForSearch(q); // e.g., "graphic t shirt"
+  const tokens = base ? base.split(" ") : [];
   const patterns = new Set<string>();
+
   if (base) patterns.add(`%${base}%`);
+
+  // token patterns
   tokens.forEach((t) => patterns.add(`%${t}%`));
+
+  // synonyms and plural/singular variants
   const synonyms: Record<string, string[]> = {
-    tshirt: ["tshirt", "t shirt", "tee"],
-    "t shirt": ["tshirt", "tee", "t shirt"],
+    tshirt: ["tshirt", "t shirt", "tee", "tees"],
+    "t shirt": ["tshirt", "t shirt", "tee", "tees"],
+    tee: ["tee", "tees", "tshirt", "t shirt", ],
+    tees: ["tee", "tees", "tshirt", "t shirt"],
+    top: ["top", "tops", "tee", "tees"],
+    tops: ["top", "tops", "tee", "tees"],
   };
+
   tokens.forEach((t) => {
-    if (synonyms[t]) synonyms[t].forEach((s) => patterns.add(`%${s}%`));
+    const syns = synonyms[t];
+    if (syns) syns.forEach((s) => patterns.add(`%${s}%`));
+    // plural/singular
+    if (t.endsWith("s")) patterns.add(`%${t.slice(0, -1)}%`);
+    else patterns.add(`%${t}s%`);
   });
+
   return Array.from(patterns);
 }
 
@@ -286,6 +302,82 @@ export const api = {
     const data = await safeJson(res);
     if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
     return data;
+  },
+  // resolve free‑text search into category/subcategory/size/products/none
+  resolveSearch: async (q: string): Promise<SearchResolution> => {
+    const query = q?.trim() ?? "";
+    if (!query) return { type: "none", query: "" };
+
+    // Try multiple slug variants for category/subcategory hits
+    const slugVariants = new Set<string>([
+      normalize(query),
+      normalizeForSearch(query),
+    ]);
+    // plural/singular
+    if (query.toLowerCase().endsWith("s")) {
+      slugVariants.add(query.slice(0, -1).toLowerCase());
+    } else {
+      slugVariants.add((query + "s").toLowerCase());
+    }
+    // common synonyms relevant to tops/tshirts
+    ["tshirt", "t shirt", "tee", "tees", "top", "tops"].forEach((w) =>
+      slugVariants.add(w)
+    );
+
+    for (const v of slugVariants) {
+      const cat = await categoriesBySlug(v);
+      if (cat) {
+        if (cat.parent_id) {
+          const parent = await categoryById(cat.parent_id);
+          return {
+            type: "subcategory",
+            category: { id: cat.id, slug: cat.slug },
+            parent: { id: parent.id, slug: parent.slug },
+          };
+        }
+        return { type: "category", category: { id: cat.id, slug: cat.slug } };
+      }
+    }
+
+    // known sizes
+    const sizeHit =
+      KNOWN_SIZES.find(
+        (s) =>
+          normalize(s) === normalize(query) ||
+          normalizeForSearch(s) === normalizeForSearch(query)
+      ) ?? null;
+    if (sizeHit) return { type: "size", size: sizeHit };
+
+    // product search (synonyms handled in buildIlikePatterns)
+    const products = await searchProductsFTS(query);
+    if (products.length) return { type: "products", products, query };
+
+    return { type: "none", query };
+  },
+
+  // Add inside export const api = { ... }
+  categoriesByIds: async (ids: string[]) => {
+    if (!ids?.length) return [];
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id,name,slug,parent_id,image_url,sort_order")
+      .in("id", ids);
+    if (error) throw error;
+    // Keep order of input ids for predictable chips
+    const byId = new Map((data ?? []).map((c: any) => [c.id, c]));
+    return ids.map((id) => byId.get(id)).filter(Boolean) as Category[];
+  },
+
+  // Single category by id (public wrapper around the helper)
+  getCategory: async (id: string) => {
+    if (!id) throw new Error("Invalid category id");
+    const { data, error } = await supabase
+      .from("categories")
+      .select("id,name,slug,parent_id,image_url,sort_order")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data as Category;
   },
 }; // IMPORTANT: close the api object before declaring helper functions
 

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import Header from "@/components/common/Header";
 import TextCategoryBar from "@/components/common/TextCategoryBar";
-import { api } from "@/lib/api";
-import type { Product, Category } from "@/lib/api";
+import { api, type Product, type Category } from "@/lib/api";
+
+import PDPSkeleton from "@/components/skeleton/PDPskeleton";
 
 import {
   Accordion,
@@ -14,13 +15,24 @@ import {
 
 type Size = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 
+// Static parent tabs used across PLP & PDP
+const staticTopTabs = [
+  { name: "Women", slug: "women" },
+  { name: "Men", slug: "men" },
+  { name: "Kids", slug: "kids" },
+  { name: "Footwear", slug: "footwear" },
+  { name: "Bags", slug: "bags" },
+  { name: "Beauty", slug: "beauty" },
+  { name: "Watches", slug: "watches" },
+];
+
 export default function ProductPDP() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [leafCat, setLeafCat] = useState<Category | null>(null); // product's category
   const [parentCat, setParentCat] = useState<Category | null>(null);
-  const [siblings, setSiblings] = useState<Category[]>([]);
   const [similar, setSimilar] = useState<Product[]>([]);
   const [alsoLiked, setAlsoLiked] = useState<Product[]>([]);
   const [size, setSize] = useState<Size | null>(null);
@@ -48,17 +60,22 @@ export default function ProductPDP() {
         }
         setProduct(p);
 
-        const sibs = await api.categorySiblings(p.category_id).catch(() => []);
-        setSiblings(sibs ?? []);
+        // Resolve leaf and parent categories
+        const leaf = await api.getCategory(p.category_id).catch(() => null);
+        setLeafCat(leaf ?? null);
 
-        const parent = await api.parentCategoryOf(p.category_id).catch(() => null);
+        const parent = leaf
+          ? await api.parentCategoryOf(leaf.id).catch(() => null)
+          : await api.parentCategoryOf(p.category_id).catch(() => null);
         setParentCat(parent ?? null);
 
+        // Similar within leaf
         const sim = await api
           .productsByCategory(p.category_id, { limit: 12, excludeId: p.id })
           .catch(() => []);
         setSimilar(sim ?? []);
 
+        // Also liked from parent (if present)
         if (parent?.id) {
           const liked = await api
             .productsByCategory(parent.id, { limit: 12, excludeId: p.id })
@@ -92,15 +109,30 @@ export default function ProductPDP() {
     alert("Added to favourites");
   };
 
+  // Common top bar component
+  const TopBar = (
+    <div className="mb-2">
+      <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
+      <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <div className="container">
+          <TextCategoryBar
+            kind="level1"
+            basePath="/category"
+            items={staticTopTabs}
+            // highlight parent if available, else leaf
+            activeSlug={parentCat?.slug ?? leafCat?.slug}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <>
         <Header />
-        <main className="container">
-          <div className="py-10 text-sm text-muted-foreground">
-            Loading product…
-          </div>
-        </main>
+        {TopBar}
+        <PDPSkeleton />
       </>
     );
   }
@@ -109,6 +141,7 @@ export default function ProductPDP() {
     return (
       <>
         <Header />
+        {TopBar}
         <main className="container">
           <div className="py-10 text-sm text-red-600">
             {err ?? "Product not found"}
@@ -124,26 +157,20 @@ export default function ProductPDP() {
     );
   }
 
+  // Breadcrumb logic:
+  // - Single-level categories (beauty/bags/watches): Home › Category › Product
+  // - Two-level categories: Home › Parent › Subcategory › Product
+  const hasParentDepth = !!(
+    parentCat &&
+    leafCat &&
+    parentCat.id !== leafCat.id
+  );
+  const topForUI = parentCat ?? leafCat ?? null;
+
   return (
     <>
       <Header />
-
-      {siblings.length > 0 && (
-        <div className="mb-2">
-          <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
-          <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-            <div className="container">
-              <TextCategoryBar
-                kind="level1"
-                items={siblings.map((c) => ({ name: c.name, slug: c.slug }))}
-                activeSlug={
-                  siblings.find((c) => c.id === product.category_id)?.slug
-                }
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {TopBar}
 
       <main className="container">
         {/* Breadcrumbs */}
@@ -154,24 +181,38 @@ export default function ProductPDP() {
           >
             Home
           </Link>
-          {parentCat && (
+
+          {topForUI && (
             <>
               <span className="mx-2">›</span>
               <Link
-                to={`/category/${parentCat.slug}`}
+                to={`/category/${topForUI.slug}`}
                 className="text-gray-500 hover:text-yellow-500 hover:underline"
               >
-                {parentCat.name}
+                {topForUI.name}
               </Link>
             </>
           )}
+
+          {hasParentDepth && parentCat && leafCat && (
+            <>
+              <span className="mx-2">›</span>
+              <Link
+                to={`/category/${parentCat.slug}/${leafCat.slug}`}
+                className="text-gray-500 hover:text-yellow-500 hover:underline"
+              >
+                {leafCat.name}
+              </Link>
+            </>
+          )}
+
           <span className="mx-2">›</span>
           <span className="text-gray-500">{product.name}</span>
         </nav>
 
         {/* PDP content */}
         <section className="grid grid-cols-12 gap-8">
-          {/* Left: non-cropping image pane */}
+          {/* Left image */}
           <div className="col-span-12 md:col-span-6">
             <div className="overflow-hidden rounded-lg border bg-white">
               <div
@@ -193,7 +234,7 @@ export default function ProductPDP() {
             </div>
           </div>
 
-          {/* Right: details */}
+          {/* Right details */}
           <div className="col-span-12 md:col-span-6">
             <h1 className="text-2xl font-semibold">{product.name}</h1>
 
@@ -211,7 +252,6 @@ export default function ProductPDP() {
 
             <div className="mt-4 text-2xl font-semibold">{priceText}</div>
 
-            {/* Plain text perks */}
             <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
               <div className="text-indigo-700">Free shipping on all orders</div>
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -220,7 +260,6 @@ export default function ProductPDP() {
               </div>
             </div>
 
-            {/* Offers */}
             <div className="mt-5 rounded-lg border bg-white p-4">
               <div className="mb-2 flex items-center gap-2">
                 <span>🏷️</span>
@@ -234,7 +273,7 @@ export default function ProductPDP() {
               </div>
             </div>
 
-            {/* Size (no size guide) */}
+            {/* Sizes (optional) */}
             <div className="mt-6 flex items-center justify-between">
               <div className="text-base font-medium">Size:</div>
             </div>
@@ -255,7 +294,6 @@ export default function ProductPDP() {
               ))}
             </div>
 
-            {/* Primary + Secondary on same row */}
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 onClick={onAddToBasket}
@@ -273,7 +311,7 @@ export default function ProductPDP() {
           </div>
         </section>
 
-        {/* Similar Products (shadcn accordion, collapsed by default) */}
+        {/* Similar Products */}
         <Accordion
           type="single"
           collapsible
@@ -290,7 +328,7 @@ export default function ProductPDP() {
           </AccordionItem>
         </Accordion>
 
-        {/* Customers Also Liked (optional; open by default if desired) */}
+        {/* Customers Also Liked */}
         {parentCat && (
           <Accordion
             type="single"

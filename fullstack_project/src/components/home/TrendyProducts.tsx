@@ -1,57 +1,3 @@
-// import ProductCard from "@/components/products/ProductCard";
-// import type { Product } from "@/components/products/ProductCard";
-// import { useState } from "react";
-
-// const mock: Product[] = Array.from({ length: 8 }).map((_, i) => ({
-//   id: `p-${i}`,
-//   title: ["Hoodie","T-Shirts","Jacket","Jersey T-Shirts","Cotton Shirts","Red Dress","Formals","Sherwani"][i] || `Product ${i+1}`,
-//   image: `/images/products/p${(i%8)+1}.jpg`,
-//   price: [15,17,16,10,13,11,22,25][i] ?? 19,
-//   strikePrice: [undefined, undefined, 18, undefined, undefined, undefined, undefined, undefined][i],
-//   rating: 3.8 + (i % 5) * 0.2,
-//   badge: i % 4 === 0 ? "Best Seller" : undefined,
-// }));
-
-// const tabs = ["ALL", "NEW ARRIVALS", "BEST SELLER", "TOP RATED"] as const;
-
-// export default function TrendyProducts() {
-//   const [active, setActive] = useState<typeof tabs[number]>("ALL");
-
-//   return (
-//     <section className="section">
-//       <h2 className="text-center text-2xl font-semibold tracking-wide">OUR TRENDY PRODUCTS</h2>
-
-//       <div className="tabs-inline mx-auto mt-4 flex w-full max-w-xl items-center justify-between">
-//         {tabs.map(t => (
-//           <button
-//             key={t}
-//             data-active={active === t}
-//             onClick={() => setActive(t)}
-//             className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-//           >
-//             {t}
-//           </button>
-//         ))}
-//       </div>
-
-//       <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-//         {mock.map(p => (
-//           <div key={p.id} className="card-hover">
-//             <ProductCard product={p} />
-//           </div>
-//         ))}
-//       </div>
-
-//       <div className="mt-8 text-center">
-//         <button className="underline-btn">DISCOVER MORE</button>
-//       </div>
-//     </section>
-//   );
-// }
-
-
-// components/TrendyProducts.tsx
-// src/components/home/TrendyProducts.tsx
 import { useEffect, useState } from "react";
 import ProductCard, { type Product as CardProduct } from "@/components/products/ProductCard";
 import { api } from "@/lib/api";
@@ -68,40 +14,81 @@ type Row = {
   review_count: number | null;
   badge: string | null;
   category: string | null;
+  category_id: string | null; // present in RPC result
   created_at: string;
+};
+
+type CardWithPath = CardProduct & {
+  uiParent?: string;
+  uiParentSlug?: string;
+  uiLeaf?: string;
+  uiLeafSlug?: string;
 };
 
 export default function TrendyProducts() {
   const [active, setActive] = useState<Tab>("BESTSELLER");
-  const [items, setItems] = useState<CardProduct[]>([]);
+  const [items, setItems] = useState<CardWithPath[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancel = false;
+
     const load = async () => {
       setLoading(true);
       setErr(null);
       try {
         const badge = active === "BESTSELLER" ? "Bestseller" : "Trending";
         const rows = (await api.trendyByBadge(badge, 8)) as Row[];
-        if (cancel) return;
-        const mapped: CardProduct[] = rows.slice(0, 8).map((r) => ({
+
+        // Base cards
+        const base: CardProduct[] = rows.slice(0, 8).map((r) => ({
           id: r.id,
           title: r.name,
           image: r.image_url ?? "/images/placeholder.png",
           price: r.price,
           strikePrice: undefined,
-          rating: r.rating ?? 4.0,
+          rating: r.rating ?? undefined,
           badge: r.badge ?? undefined,
         }));
-        setItems(mapped);
+
+        // Attach category path to each card
+        const cards = await Promise.all(
+          base.map(async (card, i) => {
+            const row = rows[i];
+            let leaf: Awaited<ReturnType<typeof api.getCategory>> | null = null;
+            let parent: Awaited<ReturnType<typeof api.parentCategoryOf>> | null = null;
+
+            if (row.category_id) {
+              leaf = await api.getCategory(row.category_id).catch(() => null);
+              parent = leaf ? await api.parentCategoryOf(leaf.id).catch(() => null) : null;
+            } else {
+              // fallback via product lookup
+              const p = await api.productById(card.id).catch(() => null);
+              if (p) {
+                leaf = await api.getCategory(p.category_id).catch(() => null);
+                parent = leaf ? await api.parentCategoryOf(leaf.id).catch(() => null) : null;
+              }
+            }
+
+            return {
+              ...card,
+              uiParent: parent?.name,
+              uiParentSlug: parent?.slug,
+              uiLeaf: leaf?.name,
+              uiLeafSlug: leaf?.slug,
+            } as CardWithPath;
+          })
+        );
+
+        if (!cancel) setItems(cards);
       } catch (e: any) {
         if (!cancel) setErr(e?.message || "Failed to load products");
       } finally {
         if (!cancel) setLoading(false);
       }
     };
+
     load();
     return () => {
       cancel = true;
@@ -125,9 +112,7 @@ export default function TrendyProducts() {
         ))}
       </div>
 
-      {err && (
-        <p className="mt-4 text-center text-xs text-red-500">{err}</p>
-      )}
+      {err && <p className="mt-4 text-center text-xs text-red-500">{err}</p>}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {loading
@@ -136,6 +121,12 @@ export default function TrendyProducts() {
             ))
           : items.map((p) => (
               <div key={p.id} className="card-hover">
+                {/* Small context line above card: Parent · Leaf */}
+                {(p.uiParent || p.uiLeaf) && (
+                  <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {p.uiParent ?? "Category"}{p.uiLeaf ? ` · ${p.uiLeaf}` : ""}
+                  </div>
+                )}
                 <ProductCard product={p} />
               </div>
             ))}
