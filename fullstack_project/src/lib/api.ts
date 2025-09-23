@@ -1,15 +1,17 @@
 import { supabase } from "./supabase";
-
-
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:4000";
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+async function safeJson(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    try {
+      const t = await res.text();
+      return t ? { message: t } : {};
+    } catch {
+      return {};
+    }
   }
-  return res.json() as Promise<T>;
 }
 
 export type Category = {
@@ -84,12 +86,13 @@ export const api = {
     }>;
   },
 
-  // inside export const api = { ... }
   productById: async (id: string) => {
     if (!id || id === "null") throw new Error("Invalid product id");
     const { data, error } = await supabase
       .from("products")
-      .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+      .select(
+        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
+      )
       .eq("id", id)
       .single();
     if (error) throw error;
@@ -130,10 +133,15 @@ export const api = {
     return (parent ?? null) as Category | null;
   },
 
-  productsByCategory: async (categoryId: string, opts?: { limit?: number; excludeId?: string }) => {
+  productsByCategory: async (
+    categoryId: string,
+    opts?: { limit?: number; excludeId?: string }
+  ) => {
     const { data, error } = await supabase
       .from("products")
-      .select("id,name,price,rating,review_count,badge,category_id,created_at,image_url")
+      .select(
+        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
+      )
       .eq("category_id", categoryId)
       .order("created_at", { ascending: false })
       .limit(opts?.limit ?? 12);
@@ -143,18 +151,16 @@ export const api = {
     return list;
   },
 
-  // Authentication API calls
+  // Authentication API calls with improved error handling
   registerUser: async (mobile: string, password: string) => {
     const res = await fetch(`${API_BASE}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile, password }),
     });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || res.statusText);
-    }
-    return res.json();
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
+    return data;
   },
 
   loginUser: async (mobile: string, password: string) => {
@@ -163,13 +169,21 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile, password }),
     });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || res.statusText);
-    }
-    return res.json();
-  }
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
+    return data;
+  },
 };
+
+// helper function used by some endpoints
+async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, init);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 // fetch hero categories by slugs, preserving order
 export async function fetchHeroCategories(slugs: string[]): Promise<CategoryHero[]> {
