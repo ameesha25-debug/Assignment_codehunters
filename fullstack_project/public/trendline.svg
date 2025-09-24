@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Trendline logo">
+  <defs>
+    <style>
+      .bg { fill: #facc15; } /* Tailwind yellow-400 */
+      .fg { fill: #ffffff; }
+    </style>
+  </defs>
+  <circle class="bg" cx="128" cy="128" r="120"/>
+  <!-- TL monogram -->
+  <path class="fg" d="M56 88h144v24H144v96h-24v-96H56z"/>
+  <path class="fg" d="M168 112h24v96h-24v-40h-32v-24h32z"/>
+</svg>
