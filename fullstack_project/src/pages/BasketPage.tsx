@@ -215,7 +215,7 @@ export default function BasketPage() {
                         </div>
 
                         {/* New bottom action row */}
-                     <div className="mt-3 pt-3 border-t-[1px] border-white">~
+                     <div className="mt-3 pt-3 border-t-[1px] border-white">
                           <div className="grid grid-cols-2 gap-3">
                             <button
                               className="w-full rounded-md border px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
