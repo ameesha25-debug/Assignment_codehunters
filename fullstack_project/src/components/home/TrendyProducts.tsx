@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import ProductCard, { type Product as CardProduct } from "@/components/products/ProductCard";
+import ProductCard from "@/components/products/ProductCard";
+import { type Product as CardProduct } from "@/lib/api";
+
 import { api } from "@/lib/api";
 
 const tabs = ["BESTSELLER", "TRENDING"] as const;
@@ -44,12 +46,15 @@ export default function TrendyProducts() {
         // Base cards
         const base: CardProduct[] = rows.slice(0, 8).map((r) => ({
           id: r.id,
-          title: r.name,
-          image: r.image_url ?? "/images/placeholder.png",
+          name: r.name,
           price: r.price,
-          strikePrice: undefined,
-          rating: r.rating ?? undefined,
-          badge: r.badge ?? undefined,
+          rating: r.rating,
+          review_count: r.review_count,
+          badge: r.badge,
+          category_id: r.category_id ?? "", // Provide fallback if null
+          created_at: r.created_at,
+          image_url: r.image_url ?? "/images/placeholder.png",
+          category: r.category,
         }));
 
         // Attach category path to each card
@@ -57,17 +62,23 @@ export default function TrendyProducts() {
           base.map(async (card, i) => {
             const row = rows[i];
             let leaf: Awaited<ReturnType<typeof api.getCategory>> | null = null;
-            let parent: Awaited<ReturnType<typeof api.parentCategoryOf>> | null = null;
+            let parent: Awaited<
+              ReturnType<typeof api.parentCategoryOf>
+            > | null = null;
 
             if (row.category_id) {
               leaf = await api.getCategory(row.category_id).catch(() => null);
-              parent = leaf ? await api.parentCategoryOf(leaf.id).catch(() => null) : null;
+              parent = leaf
+                ? await api.parentCategoryOf(leaf.id).catch(() => null)
+                : null;
             } else {
               // fallback via product lookup
               const p = await api.productById(card.id).catch(() => null);
               if (p) {
                 leaf = await api.getCategory(p.category_id).catch(() => null);
-                parent = leaf ? await api.parentCategoryOf(leaf.id).catch(() => null) : null;
+                parent = leaf
+                  ? await api.parentCategoryOf(leaf.id).catch(() => null)
+                  : null;
               }
             }
 
@@ -97,7 +108,9 @@ export default function TrendyProducts() {
 
   return (
     <section className="section">
-      <h2 className="text-center text-2xl font-semibold tracking-wide">OUR TRENDY PRODUCTS</h2>
+      <h2 className="text-center text-2xl font-semibold tracking-wide">
+        OUR TRENDY PRODUCTS
+      </h2>
 
       <div className="mx-auto mt-3 flex w-full max-w-xs items-center justify-center gap-6">
         {tabs.map((t) => (
@@ -117,14 +130,18 @@ export default function TrendyProducts() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {loading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-[320px] animate-pulse rounded-md bg-muted/40" />
+              <div
+                key={i}
+                className="h-[320px] animate-pulse rounded-md bg-muted/40"
+              />
             ))
           : items.map((p) => (
               <div key={p.id} className="card-hover">
                 {/* Small context line above card: Parent · Leaf */}
                 {(p.uiParent || p.uiLeaf) && (
                   <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {p.uiParent ?? "Category"}{p.uiLeaf ? ` · ${p.uiLeaf}` : ""}
+                    {p.uiParent ?? "Category"}
+                    {p.uiLeaf ? ` · ${p.uiLeaf}` : ""}
                   </div>
                 )}
                 <ProductCard product={p} />

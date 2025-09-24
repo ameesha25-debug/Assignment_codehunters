@@ -4,6 +4,9 @@ import Header from "@/components/common/Header";
 import TextCategoryBar from "@/components/common/TextCategoryBar";
 import { api, type Category, type Product } from "@/lib/api";
 import { sortProducts, type SortKey } from "@/lib/sorters";
+import ProductCard from "@/components/products/ProductCard";  // Adjust the path as per your project structure
+
+
 import {
   SkeletonFilterColumn,
   SkeletonGrid,
@@ -265,49 +268,12 @@ export default function CategoryPLP() {
               {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
               {/* Product grid */}
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {sortedProducts
-                  .filter((p) => !!p?.id)
-                  .map((p) => {
-                    const title = (p as any).name ?? (p as any).title ?? "";
-                    const img =
-                      (p as any).image_url ?? (p as any).image ?? `https://picsum.photos/seed/${p.id}/600/800`;
-                    return (
-                      <Link
-                        key={p.id}
-                        to={`/product/${p.id}`}
-                        className="group relative overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow"
-                        aria-label={title}
-                      >
-                        <div className="aspect-[3/4] overflow-hidden bg-muted">
-                          <img
-                            src={img}
-                            alt={title}
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="p-3">
-                          <h3 className="line-clamp-2 text-sm font-medium">{title}</h3>
-                          <div className="mt-1 text-sm text-foreground">₹{p.price}</div>
-                          {(p as any).rating != null && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {(p as any).rating} ★ · {(p as any).review_count ?? 0}
-                            </div>
-                          )}
-                        </div>
+<div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+  {sortedProducts.filter((p) => !!p?.id).map((p) => (
+    <ProductCard key={p.id} product={p} />
+  ))}
+</div>
 
-                        <button
-                          className="absolute right-2 top-2 hidden rounded-full border bg-white p-2 text-foreground shadow-sm group-hover:inline-flex"
-                          aria-label="Add to wishlist"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ♡
-                        </button>
-                      </Link>
-                    );
-                  })}
-              </div>
 
               {products.length === 0 && (
                 <p className="mt-6 text-sm text-muted-foreground">No products found in this category.</p>

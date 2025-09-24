@@ -4,6 +4,7 @@ import Header from "@/components/common/Header";
 import TextCategoryBar from "@/components/common/TextCategoryBar";
 import { api, type Product, type Category } from "@/lib/api";
 import { sortProducts, type SortKey } from "@/lib/sorters";
+import ProductCard from "@/components/products/ProductCard";
 
 import {
   SkeletonFilterColumn,
@@ -13,12 +14,20 @@ import {
 } from "@/components/skeleton/PLPskeleton";
 
 /* Simple filter block UI */
-function FilterBlock({ title, children }: { title: string; children: React.ReactNode }) {
+function FilterBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border bg-white p-4">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <button className="text-xs text-indigo-600 hover:underline">Clear</button>
+        <button className="text-xs text-indigo-600 hover:underline">
+          Clear
+        </button>
       </div>
       {children}
     </div>
@@ -51,34 +60,46 @@ export default function SearchPLP() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("recommended");
-  const [parents, setParents] = useState<Array<{ name: string; slug: string }>>([]);
+  const [parents, setParents] = useState<Array<{ name: string; slug: string }>>(
+    []
+  );
 
   // recent searches
   const recentKey = "recent_searches_v1";
   const [recent, setRecent] = useState<string[]>([]);
 
   useEffect(() => {
-    const list = JSON.parse(localStorage.getItem(recentKey) || "[]") as string[];
+    const list = JSON.parse(
+      localStorage.getItem(recentKey) || "[]"
+    ) as string[];
     setRecent(list.slice(0, 5));
   }, []);
 
   useEffect(() => {
     let cancel = false;
 
-    async function resolveParentMeta(items: Product[]): Promise<CardWithPath[]> {
+    async function resolveParentMeta(
+      items: Product[]
+    ): Promise<CardWithPath[]> {
       const uniqLeafIds = Array.from(new Set(items.map((p) => p.category_id)));
-      const leafCats = (await api.categoriesByIds(uniqLeafIds).catch(() => [])) as Category[];
+      const leafCats = (await api
+        .categoriesByIds(uniqLeafIds)
+        .catch(() => [])) as Category[];
       const leafById = new Map(leafCats.map((c) => [c.id, c]));
 
       const uniqParentIds = Array.from(
         new Set(leafCats.map((c) => c.parent_id).filter(Boolean) as string[])
       );
-      const parentCats = (await api.categoriesByIds(uniqParentIds).catch(() => [])) as Category[];
+      const parentCats = (await api
+        .categoriesByIds(uniqParentIds)
+        .catch(() => [])) as Category[];
       const parentById = new Map(parentCats.map((c) => [c.id, c]));
 
       return items.map((p) => {
         const leaf = leafById.get(p.category_id);
-        const parent = leaf?.parent_id ? parentById.get(leaf.parent_id) : undefined;
+        const parent = leaf?.parent_id
+          ? parentById.get(leaf.parent_id)
+          : undefined;
         return {
           ...p,
           _uiParentName: parent?.name ?? null,
@@ -105,7 +126,9 @@ export default function SearchPLP() {
           return;
         }
         if (res.type === "subcategory") {
-          navigate(`/category/${res.parent.slug}/${res.category.slug}`, { replace: true });
+          navigate(`/category/${res.parent.slug}/${res.category.slug}`, {
+            replace: true,
+          });
           return;
         }
 
@@ -116,9 +139,12 @@ export default function SearchPLP() {
         // Build parent facets and apply scope if present
         const parentMap = new Map<string, string>();
         withMeta.forEach((p) => {
-          if (p._uiParentSlug && p._uiParentName) parentMap.set(p._uiParentSlug, p._uiParentName);
+          if (p._uiParentSlug && p._uiParentName)
+            parentMap.set(p._uiParentSlug, p._uiParentName);
         });
-        const parentArr = Array.from(parentMap.entries()).map(([slug, name]) => ({ slug, name }));
+        const parentArr = Array.from(parentMap.entries()).map(
+          ([slug, name]) => ({ slug, name })
+        );
 
         const filtered = scope
           ? withMeta.filter((p) => (p._uiParentSlug ?? "") === scope)
@@ -130,8 +156,13 @@ export default function SearchPLP() {
         }
 
         // Save recent
-        const prev = JSON.parse(localStorage.getItem(recentKey) || "[]") as string[];
-        const next = [q, ...prev.filter((x) => x.toLowerCase() !== q.toLowerCase())].slice(0, 5);
+        const prev = JSON.parse(
+          localStorage.getItem(recentKey) || "[]"
+        ) as string[];
+        const next = [
+          q,
+          ...prev.filter((x) => x.toLowerCase() !== q.toLowerCase()),
+        ].slice(0, 5);
         localStorage.setItem(recentKey, JSON.stringify(next));
         if (!cancel) setRecent(next);
       } catch (e: any) {
@@ -169,7 +200,11 @@ export default function SearchPLP() {
         <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
         <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
           <div className="container">
-            <TextCategoryBar kind="level1" basePath="/category" items={staticTopTabs} />
+            <TextCategoryBar
+              kind="level1"
+              basePath="/category"
+              items={staticTopTabs}
+            />
           </div>
         </div>
       </div>
@@ -198,23 +233,34 @@ export default function SearchPLP() {
               <div className="sticky top-16 pt-0 mt-0">
                 <div className="mb-3 flex items-center justify-between px-1">
                   <h2 className="text-sm font-semibold">FILTERS</h2>
-                  <button className="text-xs text-indigo-600 hover:underline">Clear all</button>
+                  <button className="text-xs text-indigo-600 hover:underline">
+                    Clear all
+                  </button>
                 </div>
 
                 <div className="space-y-4">
                   <FilterBlock title="Price">
                     <div className="h-2 rounded-full bg-muted" />
                     <div className="mt-2 flex items-center gap-2">
-                      <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Min" />
+                      <input
+                        className="w-20 rounded border px-2 py-1 text-sm"
+                        placeholder="Min"
+                      />
                       <span>—</span>
-                      <input className="w-20 rounded border px-2 py-1 text-sm" placeholder="Max" />
+                      <input
+                        className="w-20 rounded border px-2 py-1 text-sm"
+                        placeholder="Max"
+                      />
                     </div>
                   </FilterBlock>
 
                   <FilterBlock title="Color">
                     <div className="flex flex-wrap gap-2">
                       {["Black", "White", "Blue", "Pink", "Green"].map((c) => (
-                        <button key={c} className="rounded-full border px-3 py-1 text-sm hover:bg-muted">
+                        <button
+                          key={c}
+                          className="rounded-full border px-3 py-1 text-sm hover:bg-muted"
+                        >
                           {c}
                         </button>
                       ))}
@@ -224,7 +270,10 @@ export default function SearchPLP() {
                   <FilterBlock title="Size">
                     <div className="flex flex-wrap gap-2">
                       {["XS", "S", "M", "L", "XL"].map((s) => (
-                        <button key={s} className="rounded border px-3 py-1 text-sm hover:bg-muted">
+                        <button
+                          key={s}
+                          className="rounded border px-3 py-1 text-sm hover:bg-muted"
+                        >
                           {s}
                         </button>
                       ))}
@@ -233,8 +282,16 @@ export default function SearchPLP() {
 
                   <FilterBlock title="Discount">
                     <div className="flex flex-col gap-2 text-sm">
-                      {["10% and above", "20% and above", "30% and above", "50% and above"].map((d) => (
-                        <label key={d} className="inline-flex items-center gap-2">
+                      {[
+                        "10% and above",
+                        "20% and above",
+                        "30% and above",
+                        "50% and above",
+                      ].map((d) => (
+                        <label
+                          key={d}
+                          className="inline-flex items-center gap-2"
+                        >
                           <input type="checkbox" className="rounded border" />
                           <span>{d}</span>
                         </label>
@@ -255,11 +312,15 @@ export default function SearchPLP() {
                   </span>
                   {parents.length > 1 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-medium text-zinc-600">Shop For</span>
+                      <span className="text-xs font-medium text-zinc-600">
+                        Shop For
+                      </span>
                       <button
                         onClick={() => onClickScope(null)}
                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
-                          !scope ? "bg-black text-white" : "bg-white hover:bg-muted"
+                          !scope
+                            ? "bg-black text-white"
+                            : "bg-white hover:bg-muted"
                         }`}
                       >
                         All
@@ -269,7 +330,9 @@ export default function SearchPLP() {
                           key={p.slug}
                           onClick={() => onClickScope(p.slug)}
                           className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
-                            scope === p.slug ? "bg-black text-white" : "bg-white hover:bg-muted"
+                            scope === p.slug
+                              ? "bg-black text-white"
+                              : "bg-white hover:bg-muted"
                           }`}
                         >
                           {p.name}
@@ -280,9 +343,13 @@ export default function SearchPLP() {
                 </div>
 
                 <div className="ml-6 flex items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-600">{products.length} matches</span>
+                  <span className="text-xs font-medium text-zinc-600">
+                    {products.length} matches
+                  </span>
                   <span className="text-xs font-medium text-zinc-600">·</span>
-                  <span className="text-xs font-medium text-zinc-600">SORT BY</span>
+                  <span className="text-xs font-medium text-zinc-600">
+                    SORT BY
+                  </span>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as SortKey)}
@@ -298,31 +365,8 @@ export default function SearchPLP() {
 
               {/* Grid */}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                {sortedProducts.map((p) => (
-                  <Link
-                    key={p.id}
-                    to={`/product/${p.id}`}
-                    className="group relative overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow"
-                    aria-label={p.name}
-                  >
-                    <div className="aspect-[3/4] overflow-hidden bg-muted">
-                      <img
-                        src={p.image_url || `https://picsum.photos/seed/${p.id}/600/800`}
-                        alt={p.name}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="line-clamp-2 text-sm font-medium">{p.name}</h3>
-                      <div className="mt-1 text-sm text-foreground">₹{p.price}</div>
-                      {p.rating != null && (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {p.rating} ★ · {p.review_count ?? 0}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
+                {sortedProducts.map((p: Product) => (
+                  <ProductCard key={p.id} product={p} />
                 ))}
               </div>
             </div>

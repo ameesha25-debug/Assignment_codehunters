@@ -38,6 +38,7 @@ export type Product = {
   created_at: string;
   image_url?: string | null;
   category?: string | null;
+  sizes?: string[] | null;
 };
 
 export type CategoryHero = {
@@ -371,6 +372,13 @@ export const api = {
     if (error) throw error;
     return data as Category;
   },
+
+
+   sizesByProductId: async (productId: string): Promise<string[]> => {
+    const { data, error } = await supabase.rpc("get_sizes_by_product_id", { input_product_id: productId });
+    if (error) throw error;
+    return (data ?? []).map((row: any) => row.size);
+  }
 }; // IMPORTANT: close the api object before declaring helper functions
 
 // helper function used by some endpoints

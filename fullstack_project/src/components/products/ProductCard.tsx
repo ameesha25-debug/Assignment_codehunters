@@ -1,169 +1,108 @@
-// import { Card, CardContent, CardFooter } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Heart } from "lucide-react";
-// import { Badge } from "@/components/ui/badge";
-
-// export type Product = {
-//   id: string;
-//   // Accept both API and UI/mock field names
-//   name?: string; // API
-//   title?: string; // UI/mock
-//   image_url?: string; // API
-//   image?: string; // UI/mock
-//   price: number;
-//   strikePrice?: number;
-//   rating?: number | null;
-//   review_count?: number | null;
-//   badge?: string | null;
-// };
-
-// export default function ProductCard({ product }: { product: Product }) {
-//   // Resolve fields from either naming convention
-//   const displayTitle = product.name ?? product.title ?? "";
-//   const displayImage =
-//     product.image_url ??
-//     product.image ??
-//     `https://picsum.photos/seed/${product.id}/600/800`; // safe fallback
-
-//   return (
-//     <Card className="group overflow-hidden">
-//       <div className="relative bg-muted/30">
-//         <img
-//           src={displayImage}
-//           alt={displayTitle}
-//           className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-//           loading="lazy"
-//         />
-//         <button
-//           aria-label="Add to wishlist"
-//           className="absolute right-2 top-2 rounded-full bg-white/90 p-2 shadow-sm ring-1 ring-black/5"
-//         >
-//           <Heart className="h-4 w-4" />
-//         </button>
-//         {product.badge && (
-//           <Badge className="absolute left-2 top-2">{product.badge}</Badge>
-//         )}
-//       </div>
-
-//       <CardContent className="space-y-1 p-3">
-//         {/* Optional category label can be dynamic later */}
-//         <p className="caption">Dresses</p>
-//         <p className="line-clamp-1 text-sm">{displayTitle}</p>
-
-//         <div className="flex items-center gap-2">
-//           <p className="font-semibold">₹{product.price}</p>
-//           {product.strikePrice && (
-//             <p className="text-xs text-muted-foreground line-through">
-//               ₹{product.strikePrice}
-//             </p>
-//           )}
-//         </div>
-
-//         {product.rating != null && (
-//           <p className="caption">
-//             ★ {product.rating.toFixed(1)} - {product.review_count ?? 0} reviews
-//           </p>
-//         )}
-//       </CardContent>
-
-//       <CardFooter className="p-3">
-//         <Button className="w-full">Add to Cart</Button>
-//       </CardFooter>
-//     </Card>
-//   );
-// }
-
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
-
-export type Product = {
-  id: string;
-  // Accept both API and UI/mock field names
-  name?: string; // API
-  title?: string; // UI/mock
-  image_url?: string; // API
-  image?: string; // UI/mock
-  price: number;
-  strikePrice?: number;
-  rating?: number | null;
-  review_count?: number | null;
-  badge?: string | null;
-};
+import type { Product } from "@/lib/api"; // Ensure this path is correct and you import Product type
 
 export default function ProductCard({ product }: { product: Product }) {
-  const displayTitle = product.name ?? product.title ?? "";
+  const navigate = useNavigate();
+  const displayTitle = product.name ?? "";
   const displayImage =
     product.image_url ??
-    product.image ??
     `https://picsum.photos/seed/${product.id}/600/800`;
 
-  // Helpers to prevent navigation when clicking inner actions
-  const stop = (e: React.MouseEvent) => e.stopPropagation();
-
   return (
-    <Link
-      to={`/product/${product.id}`}
-      className="group block overflow-hidden rounded-lg border bg-white transition hover:shadow-sm"
-      aria-label={displayTitle}
-    >
-      <Card className="pointer-events-none border-0 shadow-none">
-        <div className="relative bg-muted/30 pointer-events-auto">
-          <img
-            src={displayImage}
-            alt={displayTitle}
-            className="h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-            loading="lazy"
-          />
-          <button
-            aria-label="Add to wishlist"
-            onClick={stop}
-            className="absolute right-2 top-2 rounded-full bg-white/90 p-2 shadow-sm ring-1 ring-black/5"
+    <div className="group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-sm">
+      {/* Wishlist icon - top right outside image, appears on hover */}
+      <button
+        className="absolute z-20 right-3 top-3 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
+        aria-label="Add to favourites"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigate("/wishlist");
+        }}
+        type="button"
+        style={{ aspectRatio: "3/4" }}
+      >
+        <Heart className="h-5 w-5 stroke-2 text-gray-800" />
+      </button>
+
+      {/* Image and badge */}
+      <Link
+        to={`/product/${product.id}`}
+        aria-label={displayTitle}
+        tabIndex={-1}
+        className="block relative rounded-t-xl overflow-hidden bg-muted aspect-[3/4]"
+      >
+        <img
+          src={displayImage}
+          alt={displayTitle}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          loading="lazy"
+        />
+        {product.badge && (
+          <span className="absolute left-3 top-3 z-10 rounded bg-yellow-400 px-2 py-1 text-xs font-semibold shadow">
+            {product.badge}
+          </span>
+        )}
+
+        {/* Basket icon inside image bottom right, hover only */}
+        <button
+          className="absolute right-3 bottom-3 z-20 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
+          aria-label="Add to basket"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate("/basket");
+          }}
+          type="button"
+          style={{ aspectRatio: "3/4" }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.3"
           >
-            <Heart className="h-4 w-4" />
-          </button>
-          {product.badge && (
-            <Badge className="absolute left-2 top-2 pointer-events-none">
-              {product.badge}
-            </Badge>
-          )}
-        </div>
+            <rect
+              x="5"
+              y="7.5"
+              width="14"
+              height="11"
+              rx="2"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M9 10V8a3 3 0 1 1 6 0v2"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+          </svg>
+        </button>
+      </Link>
 
-        <CardContent className="space-y-1 p-3 pointer-events-none">
-          {/* Optional category label can be dynamic later */}
-          <p className="caption">Dresses</p>
-          <p className="line-clamp-1 text-sm">{displayTitle}</p>
-
-          <div className="flex items-center gap-2">
-            <p className="font-semibold">₹{product.price}</p>
-            {product.strikePrice && (
-              <p className="text-xs text-muted-foreground line-through">
-                ₹{product.strikePrice}
-              </p>
-            )}
+      {/* Product details */}
+      <div className="flex flex-col gap-0.5 px-4 pt-3 pb-2">
+        <Link to={`/product/${product.id}`}>
+          <div className="line-clamp-1 text-[15px] font-semibold text-gray-800 leading-tight mb-1">
+            {displayTitle}
           </div>
-
-          {product.rating != null && (
-            <p className="caption">
-              ★ {product.rating.toFixed(1)} - {product.review_count ?? 0} reviews
-            </p>
-          )}
-        </CardContent>
-
-        <CardFooter className="p-3">
-          <Button
-            className="w-full"
-            onClick={(e) => {
-              stop(e);
-              // add-to-cart logic here
-            }}
-          >
-            Add to Cart
-          </Button>
-        </CardFooter>
-      </Card>
-    </Link>
+        </Link>
+        <div className="text-[14px] font-semibold text-gray-800">
+          ₹{product.price}
+        </div>
+        {product.rating != null && (
+          <div className="text-sm text-gray-800 mt-2 flex items-center gap-1">
+            {product.rating}
+            <span aria-hidden="true">★</span>
+            <span className="mx-1">·</span>
+            {product.review_count ?? 0}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

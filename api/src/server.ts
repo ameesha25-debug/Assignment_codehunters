@@ -172,6 +172,9 @@ app.get('/api/product/:id', async (req, res) => {
   res.json(data);
 });
 
+
+
+
 // --- Start Server ---
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

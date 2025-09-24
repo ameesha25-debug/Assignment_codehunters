@@ -13,7 +13,7 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 
-type Size = "XS" | "S" | "M" | "L" | "XL" | "XXL";
+type Size = "S1" | "S2" | "S3";
 
 // Static parent tabs used across PLP & PDP
 const staticTopTabs = [
@@ -278,7 +278,7 @@ export default function ProductPDP() {
               <div className="text-base font-medium">Size:</div>
             </div>
             <div className="mt-3 flex flex-wrap gap-3">
-              {(["XS", "S", "M", "L", "XL", "XXL"] as Size[]).map((s) => (
+              {(["S1", "S2", "S3"] as Size[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSize(s)}
