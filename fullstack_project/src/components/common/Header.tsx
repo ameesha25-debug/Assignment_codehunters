@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
-import { Heart, ShoppingBag, Menu } from "lucide-react";
-import SearchBar from "@/components/common/SearchBar";
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
+import { Heart, ShoppingBag, Menu } from 'lucide-react';
+import SearchBar from '@/components/common/SearchBar';
 
-import SignInForm from "@/components/forms/SignInForm";
-import SignUpForm from "@/components/forms/SignUpForm";
-import { useAuth } from "@/lib/auth";
-import { api } from "@/lib/api";
+import SignInForm from '@/components/forms/SignInForm';
+import SignUpForm from '@/components/forms/SignUpForm';
+import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
+import { cart } from '@/lib/cart';
 
-// Simple dropdown without external deps, matches Lifestyle-style list
 function AccountMenu({
   name,
   credit = 0,
@@ -49,16 +49,16 @@ function AccountMenu({
         >
           <div className="py-2">
             {[
-              { label: "My Account", to: "/account" },
-              { label: "Favourites", to: "/wishlist" },
-              { label: "Order History", to: "/orders" },
-              { label: "My Addresses", to: "/addresses" },
-              { label: "Payment", to: "/payment" },
-              { label: `My Credit ₹${credit ?? 0}`, to: "/wallet" },
-              { label: "Communication", to: "/communication" },
-              { label: "Reviews", to: "/reviews" },
-              { label: "Click & Collect", to: "/click-collect" },
-              { label: "Landmark Rewards", to: "/rewards" },
+              { label: 'My Account', to: '/account' },
+              { label: 'Favourites', to: '/wishlist' },
+              { label: 'Order History', to: '/orders' },
+              { label: 'My Addresses', to: '/addresses' },
+              { label: 'Payment', to: '/payment' },
+              { label: `My Credit ₹${credit ?? 0}`, to: '/wallet' },
+              { label: 'Communication', to: '/communication' },
+              { label: 'Reviews', to: '/reviews' },
+              { label: 'Click & Collect', to: '/click-collect' },
+              { label: 'Landmark Rewards', to: '/rewards' },
             ].map((item) => (
               <button
                 key={item.label}
@@ -92,7 +92,8 @@ function AccountMenu({
 
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [cartCount, setCartCount] = useState<number>(0);
   const navigate = useNavigate();
 
   async function handleSearch(q: string) {
@@ -100,37 +101,92 @@ export default function Header() {
     if (!query) return;
     const res = await api.resolveSearch(query);
     switch (res.type) {
-      case "category":
+      case 'category':
         navigate(`/category/${res.category.slug}`);
         break;
-      case "subcategory":
+      case 'subcategory':
         navigate(`/category/${res.parent.slug}/${res.category.slug}`);
         break;
-      case "size":
+      case 'size':
         navigate(`/search/size/${encodeURIComponent(res.size)}`);
         break;
-      case "products":
+      case 'products':
         navigate(`/search?q=${encodeURIComponent(query)}`);
         break;
-      case "none":
+      case 'none':
       default:
         navigate(`/search?q=${encodeURIComponent(query)}`);
         break;
     }
   }
 
-  const { user, signOut, reloadUser } = useAuth() as ReturnType<
-    typeof useAuth
-  > & {
+  const { user, signOut, reloadUser } = useAuth() as ReturnType<typeof useAuth> & {
     reloadUser?: () => Promise<void>;
   };
 
   const onSignOut = async () => {
     await signOut();
-    navigate("/");
+    navigate('/');
+    setCartCount(0);
   };
 
-  // Using cookie sessions: post credentials; server sets cookies.
+  // Open auth drawer from anywhere
+  useEffect(() => {
+    function onOpenAuth(e: Event) {
+      setAuthOpen(true);
+      const detail = (e as CustomEvent).detail as 'signin' | 'signup' | undefined;
+      setMode(detail || 'signin');
+    }
+    window.addEventListener('open-auth' as any, onOpenAuth);
+    return () => window.removeEventListener('open-auth' as any, onOpenAuth);
+  }, []);
+
+  // Load cart count when user changes
+  useEffect(() => {
+    let done = false;
+    async function loadCartCount() {
+      if (!user) {
+        setCartCount(0);
+        return;
+      }
+      try {
+        const c = await cart.get();
+        if (!done) setCartCount(c.items.reduce((n, it) => n + (it.qty || 0), 0));
+      } catch {
+        if (!done) setCartCount(0);
+      }
+    }
+    loadCartCount();
+    return () => {
+      done = true;
+    };
+  }, [user]);
+
+  // Refresh count on explicit cart updates from elsewhere
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      if (!user) {
+        setCartCount(0);
+        return;
+      }
+      try {
+        const c = await cart.get();
+        if (!cancelled) setCartCount(c.items.reduce((n, it) => n + (it.qty || 0), 0));
+      } catch {
+        if (!cancelled) setCartCount(0);
+      }
+    }
+    function onCartUpdated() {
+      refresh();
+    }
+    window.addEventListener('cart-updated', onCartUpdated);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('cart-updated', onCartUpdated);
+    };
+  }, [user]);
+
   const handleSignIn = async (form: { mobile: string; password: string }) => {
     await api.loginUser(form.mobile, form.password);
     setAuthOpen(false);
@@ -172,23 +228,21 @@ export default function Header() {
                 <nav aria-label="Mobile">
                   <ul className="space-y-2">
                     {[
-                      { to: "/", label: "Home" },
-                      { to: "category/women", label: "Women" },
-                      { to: "category/men", label: "Men" },
-                      { to: "category/kids", label: "Kids" },
-                      { to: "category/footwear", label: "Footwear" },
-                      { to: "category/bags", label: "Bags" },
-                      { to: "category/beauty", label: "Beauty" },
-                      { to: "category/watches", label: "Watches" },
+                      { to: '/', label: 'Home' },
+                      { to: 'category/women', label: 'Women' },
+                      { to: 'category/men', label: 'Men' },
+                      { to: 'category/kids', label: 'Kids' },
+                      { to: 'category/footwear', label: 'Footwear' },
+                      { to: 'category/bags', label: 'Bags' },
+                      { to: 'category/beauty', label: 'Beauty' },
+                      { to: 'category/watches', label: 'Watches' },
                     ].map((item) => (
                       <li key={item.to}>
                         <NavLink
                           to={item.to}
                           className={({ isActive }) =>
                             `block rounded-md px-3 py-2 text-sm font-medium ${
-                              isActive
-                                ? "bg-zinc-100 text-zinc-900"
-                                : "text-zinc-700 hover:bg-zinc-50"
+                              isActive ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'
                             }`
                           }
                         >
@@ -211,7 +265,7 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Center search (desktop/tablet only) */}
+        {/* Center search */}
         <div className="hidden md:flex flex-1 justify-center">
           <div className="w-full max-w-2xl">
             <SearchBar
@@ -228,7 +282,7 @@ export default function Header() {
             <Button
               onClick={() => {
                 setAuthOpen(true);
-                setMode("signin");
+                setMode('signin');
               }}
               className="hidden sm:inline-flex h-9 rounded-md px-3 sm:px-3.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold"
             >
@@ -236,7 +290,7 @@ export default function Header() {
             </Button>
           ) : (
             <AccountMenu
-              name={user.name || (user as any).mobile || "Account"}
+              name={user.name || (user as any).mobile || 'Account'}
               credit={(user as any).credit ?? 0}
               onNavigate={(to) => navigate(to)}
               onSignOut={onSignOut}
@@ -253,11 +307,18 @@ export default function Header() {
           </Link>
 
           <Link
-            to="/cart"
+            to="/basket"
             className="relative grid place-items-center px-2 py-1 text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
             aria-label="Basket"
           >
-            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+            <div className="relative">
+              <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+              {cartCount > 0 && (
+                <span className="absolute -right-2 -top-2 min-w-[16px] rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white text-center">
+                  {cartCount}
+                </span>
+              )}
+            </div>
             <span className="mt-0.5">Basket</span>
           </Link>
         </div>
@@ -279,21 +340,13 @@ export default function Header() {
         <Sheet open={authOpen} onOpenChange={setAuthOpen}>
           <SheetContent side="right" className="w-full max-w-md p-6">
             <h2 className="text-xl font-semibold mb-4">
-              {mode === "signin"
-                ? "Sign In to your account"
-                : "Create a new account"}
+              {mode === 'signin' ? 'Sign In to your account' : 'Create a new account'}
             </h2>
 
-            {mode === "signin" ? (
-              <SignInForm
-                onSwitch={() => setMode("signup")}
-                onSubmit={handleSignIn}
-              />
+            {mode === 'signin' ? (
+              <SignInForm onSwitch={() => setMode('signup')} onSubmit={handleSignIn} />
             ) : (
-              <SignUpForm
-                onSwitch={() => setMode("signin")}
-                onSubmit={handleSignUp}
-              />
+              <SignUpForm onSwitch={() => setMode('signin')} onSubmit={handleSignUp} />
             )}
           </SheetContent>
         </Sheet>

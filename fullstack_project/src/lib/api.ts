@@ -1,10 +1,13 @@
+// src/lib/api.ts
 import { supabase } from './supabase';
 
-const API_BASE =
+// Shared API base for all network calls
+export const API_BASE =
   (import.meta.env.VITE_API_URL as string) ??
   (import.meta.env.VITE_API_BASE as string) ??
   'http://localhost:4000';
 
+// ---------- Utilities ----------
 async function safeJson(res: Response) {
   try {
     return await res.json();
@@ -18,6 +21,48 @@ async function safeJson(res: Response) {
   }
 }
 
+function normalize(s: string) {
+  return s.trim().toLowerCase();
+}
+
+function normalizeForSearch(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Expanded to handle top/tops/tee/tees/tshirt/t shirt and pluralization
+function buildIlikePatterns(q: string) {
+  const base = normalizeForSearch(q);
+  const tokens = base ? base.split(' ') : [];
+  const patterns = new Set<string>();
+
+  if (base) patterns.add(`%${base}%`);
+
+  tokens.forEach((t) => patterns.add(`%${t}%`));
+
+  const synonyms: Record<string, string[]> = {
+    tshirt: ['tshirt', 't shirt', 'tee', 'tees'],
+    't shirt': ['tshirt', 't shirt', 'tee', 'tees'],
+    tee: ['tee', 'tees', 'tshirt', 't shirt'],
+    tees: ['tee', 'tees', 'tshirt', 't shirt'],
+    top: ['top', 'tops', 'tee', 'tees'],
+    tops: ['top', 'tops', 'tee', 'tees'],
+  };
+
+  tokens.forEach((t) => {
+    const syns = synonyms[t];
+    if (syns) syns.forEach((s) => patterns.add(`%${s}%`));
+    if (t.endsWith('s')) patterns.add(`%${t.slice(0, -1)}%`);
+    else patterns.add(`%${t}s%`);
+  });
+
+  return Array.from(patterns);
+}
+
+// ---------- Data Types ----------
 export type Category = {
   id: string;
   name: string;
@@ -38,7 +83,6 @@ export type Product = {
   created_at: string;
   image_url?: string | null;
   category?: string | null;
-  sizes?: string[] | null;
 };
 
 export type CategoryHero = {
@@ -88,52 +132,7 @@ const KNOWN_SIZES = [
   'Free Size',
 ];
 
-// ---------------- utilities for search ----------------
-function normalize(s: string) {
-  return s.trim().toLowerCase();
-}
-
-function normalizeForSearch(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// Expanded to handle top/tops/tee/tees/tshirt/t shirt and pluralization
-function buildIlikePatterns(q: string) {
-  const base = normalizeForSearch(q); // e.g., "graphic t shirt"
-  const tokens = base ? base.split(' ') : [];
-  const patterns = new Set<string>();
-
-  if (base) patterns.add(`%${base}%`);
-
-  // token patterns
-  tokens.forEach((t) => patterns.add(`%${t}%`));
-
-  // synonyms and plural/singular variants
-  const synonyms: Record<string, string[]> = {
-    tshirt: ['tshirt', 't shirt', 'tee', 'tees'],
-    't shirt': ['tshirt', 't shirt', 'tee', 'tees'],
-    tee: ['tee', 'tees', 'tshirt', 't shirt'],
-    tees: ['tee', 'tees', 'tshirt', 't shirt'],
-    top: ['top', 'tops', 'tee', 'tees'],
-    tops: ['top', 'tops', 'tee', 'tees'],
-  };
-
-  tokens.forEach((t) => {
-    const syns = synonyms[t];
-    if (syns) syns.forEach((s) => patterns.add(`%${s}%`));
-    // plural/singular
-    if (t.endsWith('s')) patterns.add(`%${t.slice(0, -1)}%`);
-    else patterns.add(`%${t}s%`);
-  });
-
-  return Array.from(patterns);
-}
-
-// DB helpers
+// ---------- DB helpers (Supabase) ----------
 async function categoriesBySlug(slug: string) {
   const { data, error } = await supabase
     .from('categories')
@@ -176,7 +175,7 @@ async function searchProductsFTS(query: string) {
   }>;
 }
 
-// ---------------- main API object ----------------
+// ---------- Public API ----------
 export const api = {
   // homepage roots
   roots: () => http<Category[]>('/api/categories'),
@@ -287,7 +286,7 @@ export const api = {
       body: JSON.stringify({ mobile, password }),
     });
     const data = await safeJson(res);
-    if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
+    if (!res.ok) throw new Error((data as any)?.error || (data as any)?.message || res.statusText);
     return data;
   },
 
@@ -299,7 +298,7 @@ export const api = {
       body: JSON.stringify({ mobile, password }),
     });
     const data = await safeJson(res);
-    if (!res.ok) throw new Error(data?.error || data?.message || res.statusText);
+    if (!res.ok) throw new Error((data as any)?.error || (data as any)?.message || res.statusText);
     return data;
   },
 
@@ -308,15 +307,9 @@ export const api = {
     const query = q?.trim() ?? '';
     if (!query) return { type: 'none', query: '' };
 
-    // Try multiple slug variants for category/subcategory hits
     const slugVariants = new Set<string>([normalize(query), normalizeForSearch(query)]);
-    // plural/singular
-    if (query.toLowerCase().endsWith('s')) {
-      slugVariants.add(query.slice(0, -1).toLowerCase());
-    } else {
-      slugVariants.add((query + 's').toLowerCase());
-    }
-    // common synonyms relevant to tops/tshirts
+    if (query.toLowerCase().endsWith('s')) slugVariants.add(query.slice(0, -1).toLowerCase());
+    else slugVariants.add((query + 's').toLowerCase());
     ['tshirt', 't shirt', 'tee', 'tees', 'top', 'tops'].forEach((w) => slugVariants.add(w));
 
     for (const v of slugVariants) {
@@ -334,21 +327,19 @@ export const api = {
       }
     }
 
-    // known sizes
     const sizeHit =
       KNOWN_SIZES.find(
         (s) => normalize(s) === normalize(query) || normalizeForSearch(s) === normalizeForSearch(query)
       ) ?? null;
     if (sizeHit) return { type: 'size', size: sizeHit };
 
-    // product search (synonyms handled in buildIlikePatterns)
     const products = await searchProductsFTS(query);
     if (products.length) return { type: 'products', products, query };
 
     return { type: 'none', query };
   },
 
-  // Add inside export const api = { ... }
+  // Utility fetches used elsewhere
   categoriesByIds: async (ids: string[]) => {
     if (!ids?.length) return [];
     const { data, error } = await supabase
@@ -356,12 +347,10 @@ export const api = {
       .select('id,name,slug,parent_id,image_url,sort_order')
       .in('id', ids);
     if (error) throw error;
-    // Keep order of input ids for predictable chips
     const byId = new Map((data ?? []).map((c: any) => [c.id, c]));
     return ids.map((id) => byId.get(id)).filter(Boolean) as Category[];
   },
 
-  // Single category by id (public wrapper around the helper)
   getCategory: async (id: string) => {
     if (!id) throw new Error('Invalid category id');
     const { data, error } = await supabase
@@ -372,16 +361,9 @@ export const api = {
     if (error) throw error;
     return data as Category;
   },
+}; // end api
 
-
-   sizesByProductId: async (productId: string): Promise<string[]> => {
-    const { data, error } = await supabase.rpc("get_sizes_by_product_id", { input_product_id: productId });
-    if (error) throw error;
-    return (data ?? []).map((row: any) => row.size);
-  }
-}; // IMPORTANT: close the api object before declaring helper functions
-
-// helper function used by some endpoints
+// ---------- Shared HTTP helper ----------
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
@@ -391,12 +373,14 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// fetch hero categories by slugs, preserving order
+// ---------- Optional helper for hero categories ----------
 export async function fetchHeroCategories(slugs: string[]): Promise<CategoryHero[]> {
-  const { data, error } = await supabase.from('categories').select('id,name,slug,image_url').in('slug', slugs);
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id,name,slug,image_url')
+    .in('slug', slugs);
   if (error) throw error;
 
-  // Preserve the requested order
   const bySlug = new Map((data ?? []).map((c: any) => [c.slug, c]));
   return slugs
     .map((s) => bySlug.get(s))
