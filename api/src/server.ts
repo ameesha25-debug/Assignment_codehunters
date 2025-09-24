@@ -3,7 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes';
-import { supabaseAdmin } from './db'; // Make sure this is set up correctly
+import cartRoutes from './routes/cartRoutes'; 
+import { supabaseAdmin } from './db'; 
 
 dotenv.config();
 
@@ -28,6 +29,9 @@ app.use(cookieParser());
 // --- Auth Routes ---
 // NOTE: mount under /api/auth and ensure routes inside set/clear HttpOnly cookies.
 app.use('/api/auth', authRoutes);
+
+// --- Cart Routes ---
+app.use('/api/cart', cartRoutes);
 
 // --- Health Check ---
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
@@ -171,9 +175,6 @@ app.get('/api/product/:id', async (req, res) => {
   if (error || !data) return res.status(404).json({ error: 'Not found' });
   res.json(data);
 });
-
-
-
 
 // --- Start Server ---
 app.listen(PORT, () => {

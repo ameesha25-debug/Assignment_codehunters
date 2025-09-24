@@ -1,32 +1,63 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Heart } from "lucide-react";
-import type { Product } from "@/lib/api"; // Ensure this path is correct and you import Product type
+// components/products/ProductCard.tsx
+import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import type { Product } from '@/lib/api';
+import { cart } from '@/lib/cart';
+import { useAuth } from '@/lib/auth';
 
 export default function ProductCard({ product }: { product: Product }) {
-  const navigate = useNavigate();
-  const displayTitle = product.name ?? "";
-  const displayImage =
-    product.image_url ??
-    `https://picsum.photos/seed/${product.id}/600/800`;
+  const { user } = useAuth();
+  const displayTitle = product.name ?? '';
+  const displayImage = product.image_url ?? `https://picsum.photos/seed/${product.id}/600/800`;
+
+  // Heuristic: set to true if this product/category requires size selection
+  const productRequiresSize = false; // TODO: replace with an actual flag or category check
+
+  async function handleAddToBasket(e: React.MouseEvent<HTMLButtonElement>) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
+      return;
+    }
+    // If size is required, send to PDP for selection instead of adding from grid
+    if (productRequiresSize) {
+      window.location.assign(`/product/${product.id}`);
+      return;
+    }
+    try {
+      await cart.addItem(product.id, 1, null);
+      window.dispatchEvent(new CustomEvent('cart-updated'));
+      const btn = (e.currentTarget as HTMLButtonElement) || null;
+      if (btn) {
+        btn.classList.add('ring', 'ring-amber-400');
+        setTimeout(() => {
+          if (btn) btn.classList.remove('ring', 'ring-amber-400');
+        }, 500);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Failed to add to basket');
+    }
+  }
 
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-sm">
-      {/* Wishlist icon - top right outside image, appears on hover */}
+      {/* Wishlist icon */}
       <button
         className="absolute z-20 right-3 top-3 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
         aria-label="Add to favourites"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          navigate("/wishlist");
+          window.location.assign('/wishlist');
         }}
         type="button"
-        style={{ aspectRatio: "3/4" }}
+        style={{ aspectRatio: '3/4' }}
       >
         <Heart className="h-5 w-5 stroke-2 text-gray-800" />
       </button>
 
-      {/* Image and badge */}
+      {/* Image + badge */}
       <Link
         to={`/product/${product.id}`}
         aria-label={displayTitle}
@@ -45,17 +76,13 @@ export default function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        {/* Basket icon inside image bottom right, hover only */}
-        <button
+        {/* Basket icon (hover) */}
+        {/* <button
           className="absolute right-3 bottom-3 z-20 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
           aria-label="Add to basket"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate("/basket");
-          }}
+          onClick={handleAddToBasket}
           type="button"
-          style={{ aspectRatio: "3/4" }}
+          style={{ aspectRatio: '3/4' }}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -66,34 +93,20 @@ export default function ProductCard({ product }: { product: Product }) {
             stroke="currentColor"
             strokeWidth="1.3"
           >
-            <rect
-              x="5"
-              y="7.5"
-              width="14"
-              height="11"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M9 10V8a3 3 0 1 1 6 0v2"
-              stroke="currentColor"
-              strokeWidth="1.3"
-            />
+            <rect x="5" y="7.5" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M9 10V8a3 3 0 1 1 6 0v2" stroke="currentColor" strokeWidth="1.3" />
           </svg>
-        </button>
+        </button> */}
       </Link>
 
-      {/* Product details */}
+      {/* Details */}
       <div className="flex flex-col gap-0.5 px-4 pt-3 pb-2">
         <Link to={`/product/${product.id}`}>
           <div className="line-clamp-1 text-[15px] font-semibold text-gray-800 leading-tight mb-1">
             {displayTitle}
           </div>
         </Link>
-        <div className="text-[14px] font-semibold text-gray-800">
-          ₹{product.price}
-        </div>
+        <div className="text-[14px] font-semibold text-gray-800">₹{product.price}</div>
         {product.rating != null && (
           <div className="text-sm text-gray-800 mt-2 flex items-center gap-1">
             {product.rating}
