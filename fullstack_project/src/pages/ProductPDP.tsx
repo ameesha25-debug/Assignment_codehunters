@@ -1,11 +1,14 @@
 // pages/ProductPDP.tsx
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import Header from '@/components/common/Header';
 import TextCategoryBar from '@/components/common/TextCategoryBar';
 import { api, type Product, type Category } from '@/lib/api';
 import { cart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth';
+import { wishlist } from '@/lib/wishlist';
+import { useWishlist } from '@/wishlist/useWishlist';
+import HeartButton from '@/components/common/HeartButton';
 
 import PDPSkeleton from '@/components/skeleton/PDPskeleton';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -107,7 +110,9 @@ export default function ProductPDP() {
       try {
         const c = await cart.get();
         const match = c.items.some(
-          (it) => it.product_id === product.id && (productHasSizes ? (size ? it.size === size : true) : true)
+          (it) =>
+            it.product_id === product.id &&
+            (productHasSizes ? (size ? it.size === size : true) : true)
         );
         if (!cancelled) setAlreadyInCart(match);
       } catch {
@@ -135,7 +140,6 @@ export default function ProductPDP() {
       return;
     }
     if (alreadyInCart) {
-      // Don’t re-add; navigate
       navigate('/basket');
       return;
     }
@@ -154,10 +158,27 @@ export default function ProductPDP() {
     }
   };
 
-  const onAddToFavourites = () => {
+  // Wishlist toggle on PDP
+  const { inWishlist, refresh } = useWishlist();
+  const isFaved = useMemo(() => (product ? inWishlist(product.id, size) : false), [product, size, inWishlist]);
+
+  const toggleFavourite = useCallback(async () => {
     if (!product) return;
-    alert('Added to favourites');
-  };
+    if (!user) {
+      window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
+      return;
+    }
+    try {
+      if (isFaved) {
+        await wishlist.remove(product.id, size ?? null);
+      } else {
+        await wishlist.add(product.id, size ?? null);
+      }
+      await refresh(); // immediate UI sync
+    } catch (e: any) {
+      alert(e?.message || 'Failed to update favourites');
+    }
+  }, [product, user, isFaved, size, refresh]);
 
   const TopBar = (
     <div className="mb-2">
@@ -328,13 +349,27 @@ export default function ProductPDP() {
                 onClick={onAddToBasket}
                 className={
                   'rounded-md px-6 py-4 text-center text-white ' +
-                  (alreadyInCart ? 'bg-emerald-600 hover:bg-emerald-700' : added ? 'bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600')
+                  (alreadyInCart
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : added
+                    ? 'bg-emerald-600'
+                    : 'bg-amber-500 hover:bg-amber-600')
                 }
               >
                 {alreadyInCart ? 'GO TO BASKET' : added ? 'ADDED TO BASKET' : 'ADD TO BASKET'}
               </button>
-              <button className="rounded-md border px-6 py-4 text-center" onClick={onAddToFavourites}>
-                ♡ Add to Favourites
+
+              <button
+                className={
+                  'rounded-md border px-6 py-4 text-center transition ' +
+                  (isFaved ? 'border-red-500 text-red-600' : '')
+                }
+                onClick={toggleFavourite}
+                title={isFaved ? 'Remove from favourites' : 'Add to favourites'}
+              >
+                <span className={isFaved ? 'text-red-600' : ''}>
+                  {isFaved ? '♥ Added to Favourites' : '♡ Add to Favourites'}
+                </span>
               </button>
             </div>
           </div>
@@ -354,9 +389,7 @@ export default function ProductPDP() {
         {parentCat && (
           <Accordion type="single" collapsible defaultValue="also-liked" className="mt-4">
             <AccordionItem value="also-liked">
-              <AccordionTrigger className="text-lg font-semibold">
-                Customers Also Liked
-              </AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold">Customers Also Liked</AccordionTrigger>
               <AccordionContent>
                 <ProductsCarousel items={alsoLiked} />
               </AccordionContent>
@@ -378,25 +411,33 @@ function ProductsCarousel({ items }: { items: Product[] }) {
       {items
         .filter((p) => !!p?.id)
         .map((p) => (
-          <Link
-            key={p.id}
-            to={`/product/${p.id}`}
-            className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-sm"
-          >
-            <div className="aspect-[3/4] bg-muted">
-              <img
-                src={p.image_url || `https://picsum.photos/seed/${p.id}/600/800`}
-                alt={p.name ?? ''}
-                className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                loading="lazy"
+          <div key={p.id} className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-sm">
+            {/* Image with Heart */}
+            <div className="relative">
+              <Link to={`/product/${p.id}`} className="block">
+                <div className="aspect-[3/4] bg-muted">
+                  <img
+                    src={p.image_url || `https://picsum.photos/seed/${p.id}/600/800`}
+                    alt={p.name ?? ''}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                    loading="lazy"
+                  />
+                </div>
+              </Link>
+              {/* Optional Heart overlay on tiles */}
+              <HeartButton
+                productId={p.id}
+                className="absolute right-2 top-2 h-8 w-8 rounded-full border-2 border-gray-300 bg-white opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
               />
             </div>
+
+            {/* Text */}
             <div className="p-3">
               <div className="line-clamp-2 text-sm font-medium">{p.name}</div>
               <div className="mt-1 text-sm">₹{p.price}</div>
               {p.rating != null && <div className="mt-1 text-xs text-muted-foreground">{p.rating} ★</div>}
             </div>
-          </Link>
+          </div>
         ))}
     </div>
   );

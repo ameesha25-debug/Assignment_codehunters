@@ -5,6 +5,7 @@ import AuthPage from '@/pages/AuthPage';
 import ProductPDP from '@/pages/ProductPDP';
 import SearchPLP from '@/pages/SearchPLP';
 import BasketPage from '@/pages/BasketPage'; // NEW
+import WishlistPage from '@/pages/WishlistPage';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/basket" element={<BasketPage />} /> {/* NEW */}
       {/* Optional alias if header or links use /cart */}
       <Route path="/cart" element={<BasketPage />} />
+      <Route path="/wishlist" element={<WishlistPage />} />
     </Routes>
   );
 }

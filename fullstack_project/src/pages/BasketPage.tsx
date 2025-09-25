@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/common/Header';
 import { cart, type Cart, type CartItem } from '@/lib/cart';
+import { wishlist } from '@/lib/wishlist';
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function BasketPage() {
@@ -60,6 +61,25 @@ export default function BasketPage() {
     }
   }
 
+  async function onMoveToFavourites(it: CartItem) {
+    try {
+      setBusy((b) => ({ ...b, [it.id]: true }));
+      // 1) Add to wishlist (preserve size if any)
+      await wishlist.add(it.product_id, it.size ?? null);
+      window.dispatchEvent(new CustomEvent('wishlist-updated'));
+      // 2) Remove from cart
+      await cart.removeItem(it.id);
+      window.dispatchEvent(new CustomEvent('cart-updated'));
+      // 3) Reload snapshot
+      await load();
+    } catch (e: any) {
+      alert(e?.message || 'Failed to move to favourites');
+      await load();
+    } finally {
+      setBusy((b) => ({ ...b, [it.id]: false }));
+    }
+  }
+
   async function onClear() {
     try {
       setData((prev) => (prev ? { ...prev, items: [], subtotal: 0 } : prev));
@@ -75,9 +95,7 @@ export default function BasketPage() {
   async function onQtyChange(id: string, nextQty: number) {
     if (nextQty < 1) return;
     try {
-      optimisticUpdate((items) =>
-        items.map((it) => (it.id === id ? { ...it, qty: nextQty } : it))
-      );
+      optimisticUpdate((items) => items.map((it) => (it.id === id ? { ...it, qty: nextQty } : it)));
       setBusy((b) => ({ ...b, [id]: true }));
       await cart.updateQty(id, nextQty);
       window.dispatchEvent(new CustomEvent('cart-updated'));
@@ -215,7 +233,7 @@ export default function BasketPage() {
                         </div>
 
                         {/* New bottom action row */}
-                     <div className="mt-3 pt-3 border-t-[1px] border-white">~
+                        <div className="mt-3 pt-3 border-t-[1px] border-white">
                           <div className="grid grid-cols-2 gap-3">
                             <button
                               className="w-full rounded-md border px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
@@ -227,11 +245,7 @@ export default function BasketPage() {
                             <button
                               className="w-full rounded-md border px-3 py-2 text-sm font-medium hover:bg-zinc-50 disabled:opacity-50"
                               disabled={isBusyItem}
-                              onClick={() => {
-                                // Placeholder: navigate to wishlist
-                                // TODO: implement wishlist add + remove from cart
-                                window.location.assign('/wishlist');
-                              }}
+                              onClick={() => onMoveToFavourites(it)}
                             >
                               Move to favourites
                             </button>
