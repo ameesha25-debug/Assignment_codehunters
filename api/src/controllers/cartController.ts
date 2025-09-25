@@ -130,3 +130,16 @@ export const updateQty = async (req: Request, res: Response) => {
     return res.status(500).json({ error: e?.message || 'Server error' });
   }
 };
+// controllers/cartController.ts
+export const clearCart = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId as string | undefined;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const { error } = await supabase.from('cart_items').delete().eq('user_id', userId);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || 'Server error' });
+  }
+};
+

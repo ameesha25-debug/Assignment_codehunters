@@ -4,6 +4,9 @@ import { Heart } from 'lucide-react';
 import type { Product } from '@/lib/api';
 import { cart } from '@/lib/cart';
 import { useAuth } from '@/lib/auth';
+import { wishlist } from '@/lib/wishlist';
+import { useWishlist } from '@/wishlist/useWishlist';
+import { useCallback, useMemo } from 'react';
 
 export default function ProductCard({ product }: { product: Product }) {
   const { user } = useAuth();
@@ -13,6 +16,34 @@ export default function ProductCard({ product }: { product: Product }) {
   // Heuristic: set to true if this product/category requires size selection
   const productRequiresSize = false; // TODO: replace with an actual flag or category check
 
+  // Wishlist integration
+  const { inWishlist, refresh } = useWishlist();
+  // Visual toggle state
+  const isWished = useMemo(() => inWishlist(product.id, null), [inWishlist, product.id]);
+
+  const toggleWishlist = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!user) {
+        window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
+        return;
+      }
+      try {
+        if (isWished) {
+          await wishlist.remove(product.id, null);
+        } else {
+          await wishlist.add(product.id, null);
+        }
+        // wishlist client emits 'wishlist-updated'; refresh for instant local update
+        await refresh();
+      } catch (err: any) {
+        alert(err?.message || 'Failed to update favourites');
+      }
+    },
+    [user, isWished, product.id, refresh]
+  );
+
   async function handleAddToBasket(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
     e.stopPropagation();
@@ -20,7 +51,6 @@ export default function ProductCard({ product }: { product: Product }) {
       window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
       return;
     }
-    // If size is required, send to PDP for selection instead of adding from grid
     if (productRequiresSize) {
       window.location.assign(`/product/${product.id}`);
       return;
@@ -45,16 +75,19 @@ export default function ProductCard({ product }: { product: Product }) {
       {/* Wishlist icon */}
       <button
         className="absolute z-20 right-3 top-3 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
-        aria-label="Add to favourites"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          window.location.assign('/wishlist');
-        }}
+        aria-label={isWished ? 'Remove from favourites' : 'Add to favourites'}
+        onClick={toggleWishlist}
         type="button"
         style={{ aspectRatio: '3/4' }}
+        title={isWished ? 'Remove from favourites' : 'Add to favourites'}
       >
-        <Heart className="h-5 w-5 stroke-2 text-gray-800" />
+        {/* Active: red heart with fill; Inactive: muted gray with hover to red */}
+        <Heart
+          className={
+            'h-5 w-5 stroke-2 ' +
+            (isWished ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-500')
+          }
+        />
       </button>
 
       {/* Image + badge */}
@@ -76,8 +109,8 @@ export default function ProductCard({ product }: { product: Product }) {
           </span>
         )}
 
-        {/* Basket icon (hover) */}
-        {/* <button
+        {/* Basket icon (hover)
+        <button
           className="absolute right-3 bottom-3 z-20 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
           aria-label="Add to basket"
           onClick={handleAddToBasket}

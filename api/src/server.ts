@@ -8,6 +8,7 @@ import { supabaseAdmin } from './db';
 import addressesRoutes from './routes/addressesRoutes';
 import ordersRoutes from './routes/ordersRoutes';
 
+import wishlistRoutes from './routes/wishlistRoutes';
 dotenv.config();
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/auth', authRoutes);
 
 // --- Cart Routes ---
 app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // --- Health Check ---
 app.get('/api/health', (_req, res) => res.json({ ok: true }));

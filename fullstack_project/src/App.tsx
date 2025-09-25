@@ -8,6 +8,7 @@ import BasketPage from '@/pages/BasketPage'; // NEW
 import CheckoutPage from '@/pages/CheckoutPage';
 import OrdersPage from '@/pages/OrdersPage';
 import OrderDetailsPage from './pages/OrderDetailsPage';
+import WishlistPage from '@/pages/WishlistPage';
 
 export default function App() {
   console.log("APP is rendered")
@@ -25,6 +26,7 @@ export default function App() {
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/orders" element={<OrdersPage />} />
       <Route path="/orders/:id" element={<OrderDetailsPage />} />
+      <Route path="/wishlist" element={<WishlistPage />} />
     </Routes>
   );
 }
