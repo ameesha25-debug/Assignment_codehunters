@@ -1,11 +1,9 @@
-// src/lib/api.ts
-import { supabase } from './supabase';
+import { supabase } from "./supabase";
 
-// Shared API base for all network calls
 export const API_BASE =
   (import.meta.env.VITE_API_URL as string) ??
   (import.meta.env.VITE_API_BASE as string) ??
-  'http://localhost:4000';
+  "http://localhost:4000";
 
 // ---------- Utilities ----------
 async function safeJson(res: Response) {
@@ -28,34 +26,31 @@ function normalize(s: string) {
 function normalizeForSearch(s: string) {
   return s
     .toLowerCase()
-    .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[\u2010-\u2015\u2212\-_/.,+()'"&]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-// Expanded to handle top/tops/tee/tees/tshirt/t shirt and pluralization
 function buildIlikePatterns(q: string) {
   const base = normalizeForSearch(q);
-  const tokens = base ? base.split(' ') : [];
+  const tokens = base ? base.split(" ") : [];
   const patterns = new Set<string>();
 
   if (base) patterns.add(`%${base}%`);
-
   tokens.forEach((t) => patterns.add(`%${t}%`));
 
   const synonyms: Record<string, string[]> = {
-    tshirt: ['tshirt', 't shirt', 'tee', 'tees'],
-    't shirt': ['tshirt', 't shirt', 'tee', 'tees'],
-    tee: ['tee', 'tees', 'tshirt', 't shirt'],
-    tees: ['tee', 'tees', 'tshirt', 't shirt'],
-    top: ['top', 'tops', 'tee', 'tees'],
-    tops: ['top', 'tops', 'tee', 'tees'],
+    tshirt: ["tshirt", "t shirt", "tee", "tees"],
+    "t shirt": ["tshirt", "t shirt", "tee", "tees"],
+    tee: ["tee", "tees", "tshirt", "t shirt"],
+    tees: ["tee", "tees", "tshirt", "t shirt"],
+    top: ["top", "tops", "tee", "tees"],
+    tops: ["top", "tops", "tee", "tees"],
   };
-
   tokens.forEach((t) => {
     const syns = synonyms[t];
     if (syns) syns.forEach((s) => patterns.add(`%${s}%`));
-    if (t.endsWith('s')) patterns.add(`%${t.slice(0, -1)}%`);
+    if (t.endsWith("s")) patterns.add(`%${t.slice(0, -1)}%`);
     else patterns.add(`%${t}s%`);
   });
 
@@ -93,65 +88,45 @@ export type CategoryHero = {
 };
 
 export type SearchResolution =
-  | { type: 'category'; category: { id: string; slug: string } }
+  | { type: "category"; category: { id: string; slug: string } }
   | {
-      type: 'subcategory';
+      type: "subcategory";
       category: { id: string; slug: string };
       parent: { id: string; slug: string };
     }
-  | { type: 'size'; size: string }
   | {
-      type: 'products';
+      type: "products";
       products: Array<{
         id: string;
         name: string;
         image_url: string | null;
         price: number;
         category_id: string;
+        created_at: string;
+        rating: number | null;
+        review_count: number | null;
+        badge: string | null;
       }>;
       query: string;
     }
-  | { type: 'none'; query: string };
+  | { type: "none"; query: string };
 
-const KNOWN_SIZES = [
-  'XS',
-  'S',
-  'M',
-  'L',
-  'XL',
-  'XXL',
-  '8-9 Y',
-  '9-10 Y',
-  '10-11 Y',
-  '11-12 Y',
-  '32',
-  '34',
-  '36',
-  '38',
-  '40',
-  'Free Size',
-];
-
-// ---------- DB helpers (Supabase) ----------
+// ---------- DB helpers ----------
 async function categoriesBySlug(slug: string) {
   const { data, error } = await supabase
-    .from('categories')
-    .select('id,slug,parent_id')
-    .eq('slug', slug)
+    .from("categories")
+    .select("id,slug,parent_id")
+    .eq("slug", slug)
     .single();
-  if (error && (error as any).code !== 'PGRST116') throw error; // allow not found
-  return (data ?? null) as {
-    id: string;
-    slug: string;
-    parent_id: string | null;
-  } | null;
+  if (error && (error as any).code !== "PGRST116") throw error;
+  return (data ?? null) as { id: string; slug: string; parent_id: string | null } | null;
 }
 
 async function categoryById(id: string) {
   const { data, error } = await supabase
-    .from('categories')
-    .select('id,slug,parent_id')
-    .eq('id', id)
+    .from("categories")
+    .select("id,slug,parent_id")
+    .eq("id", id)
     .single();
   if (error) throw error;
   return data as { id: string; slug: string; parent_id: string | null };
@@ -161,9 +136,11 @@ async function searchProductsFTS(query: string) {
   const patterns = buildIlikePatterns(query);
   if (patterns.length === 0) return [];
   const { data, error } = await supabase
-    .from('products')
-    .select('id,name,image_url,price,category_id')
-    .or(patterns.map((p) => `name.ilike.${p}`).join(','))
+    .from("products")
+    .select(
+      "id,name,image_url,price,category_id,created_at,rating,review_count,badge"
+    ) // expanded so cards have rating/badge
+    .or(patterns.map((p) => `name.ilike.${p}`).join(","))
     .limit(48);
   if (error) throw error;
   return (data ?? []) as Array<{
@@ -172,15 +149,17 @@ async function searchProductsFTS(query: string) {
     image_url: string | null;
     price: number;
     category_id: string;
+    created_at: string;
+    rating: number | null;
+    review_count: number | null;
+    badge: string | null;
   }>;
 }
 
 // ---------- Public API ----------
 export const api = {
-  // homepage roots
-  roots: () => http<Category[]>('/api/categories'),
+  roots: () => http<Category[]>("/api/categories"),
 
-  // plp level 1: /category/:slug
   categoryPage: (slug: string) =>
     http<{
       category: Category;
@@ -189,18 +168,8 @@ export const api = {
       products: Product[];
     }>(`/api/category/${slug}`),
 
-  // plp level 2: /category/:parentSlug/:subSlug
-  subcategoryPage: (parentSlug: string, subSlug: string) =>
-    http<{
-      parent: Category;
-      subcategory: Category;
-      siblings: Category[];
-      products: Product[];
-    }>(`/api/category/${parentSlug}/${subSlug}`),
-
-  // trendy module via Supabase RPC
-  trendyByBadge: async (badge: 'Bestseller' | 'Trending', limit = 8) => {
-    const { data, error } = await supabase.rpc('get_trendy_by_badge', {
+  trendyByBadge: async (badge: "Bestseller" | "Trending", limit = 8) => {
+    const { data, error } = await supabase.rpc("get_trendy_by_badge", {
       badge_in: badge,
       limit_count: limit,
     });
@@ -220,11 +189,13 @@ export const api = {
   },
 
   productById: async (id: string) => {
-    if (!id || id === 'null') throw new Error('Invalid product id');
+    if (!id || id === "null") throw new Error("Invalid product id");
     const { data, error } = await supabase
-      .from('products')
-      .select('id,name,price,rating,review_count,badge,category_id,created_at,image_url')
-      .eq('id', id)
+      .from("products")
+      .select(
+        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
+      )
+      .eq("id", id)
       .single();
     if (error) throw error;
     return data as Product;
@@ -232,44 +203,49 @@ export const api = {
 
   categorySiblings: async (categoryId: string) => {
     const { data: me, error: e1 } = await supabase
-      .from('categories')
-      .select('parent_id')
-      .eq('id', categoryId)
+      .from("categories")
+      .select("parent_id")
+      .eq("id", categoryId)
       .single();
     if (e1) throw e1;
     const { data, error } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id,sort_order,image_url')
-      .eq('parent_id', me?.parent_id)
-      .order('sort_order', { ascending: true })
-      .order('name', { ascending: true });
+      .from("categories")
+      .select("id,name,slug,parent_id,sort_order,image_url")
+      .eq("parent_id", me?.parent_id)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
     if (error) throw error;
     return (data ?? []) as Category[];
   },
 
   parentCategoryOf: async (categoryId: string) => {
     const { data: me, error } = await supabase
-      .from('categories')
-      .select('parent_id')
-      .eq('id', categoryId)
+      .from("categories")
+      .select("parent_id")
+      .eq("id", categoryId)
       .single();
     if (error) throw error;
     if (!me?.parent_id) return null;
     const { data: parent, error: e2 } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id,image_url,sort_order')
-      .eq('id', me.parent_id)
+      .from("categories")
+      .select("id,name,slug,parent_id,image_url,sort_order")
+      .eq("id", me.parent_id)
       .single();
     if (e2) throw e2;
     return (parent ?? null) as Category | null;
   },
 
-  productsByCategory: async (categoryId: string, opts?: { limit?: number; excludeId?: string }) => {
+  productsByCategory: async (
+    categoryId: string,
+    opts?: { limit?: number; excludeId?: string }
+  ) => {
     const { data, error } = await supabase
-      .from('products')
-      .select('id,name,price,rating,review_count,badge,category_id,created_at,image_url')
-      .eq('category_id', categoryId)
-      .order('created_at', { ascending: false })
+      .from("products")
+      .select(
+        "id,name,price,rating,review_count,badge,category_id,created_at,image_url"
+      )
+      .eq("category_id", categoryId)
+      .order("created_at", { ascending: false })
       .limit(opts?.limit ?? 12);
     if (error) throw error;
     let list = (data ?? []) as Product[];
@@ -277,40 +253,50 @@ export const api = {
     return list;
   },
 
-  // Authentication API calls with credentials included for cookies
   registerUser: async (mobile: string, password: string) => {
     const res = await fetch(`${API_BASE}/api/auth/register`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile, password }),
     });
     const data = await safeJson(res);
-    if (!res.ok) throw new Error((data as any)?.error || (data as any)?.message || res.statusText);
+    if (!res.ok)
+      throw new Error(
+        (data as any)?.error || (data as any)?.message || res.statusText
+      );
     return data;
   },
 
   loginUser: async (mobile: string, password: string) => {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mobile, password }),
     });
     const data = await safeJson(res);
-    if (!res.ok) throw new Error((data as any)?.error || (data as any)?.message || res.statusText);
+    if (!res.ok)
+      throw new Error(
+        (data as any)?.error || (data as any)?.message || res.statusText
+      );
     return data;
   },
 
-  // resolve free‑text search into category/subcategory/size/products/none
   resolveSearch: async (q: string): Promise<SearchResolution> => {
-    const query = q?.trim() ?? '';
-    if (!query) return { type: 'none', query: '' };
+    const query = q?.trim() ?? "";
+    if (!query) return { type: "none", query: "" };
 
-    const slugVariants = new Set<string>([normalize(query), normalizeForSearch(query)]);
-    if (query.toLowerCase().endsWith('s')) slugVariants.add(query.slice(0, -1).toLowerCase());
-    else slugVariants.add((query + 's').toLowerCase());
-    ['tshirt', 't shirt', 'tee', 'tees', 'top', 'tops'].forEach((w) => slugVariants.add(w));
+    const slugVariants = new Set<string>([
+      normalize(query),
+      normalizeForSearch(query),
+    ]);
+    if (query.toLowerCase().endsWith("s"))
+      slugVariants.add(query.slice(0, -1).toLowerCase());
+    else slugVariants.add((query + "s").toLowerCase());
+    ["tshirt", "t shirt", "tee", "tees", "top", "tops"].forEach((w) =>
+      slugVariants.add(w)
+    );
 
     for (const v of slugVariants) {
       const cat = await categoriesBySlug(v);
@@ -318,67 +304,92 @@ export const api = {
         if (cat.parent_id) {
           const parent = await categoryById(cat.parent_id);
           return {
-            type: 'subcategory',
+            type: "subcategory",
             category: { id: cat.id, slug: cat.slug },
             parent: { id: parent.id, slug: parent.slug },
           };
         }
-        return { type: 'category', category: { id: cat.id, slug: cat.slug } };
+        return { type: "category", category: { id: cat.id, slug: cat.slug } };
       }
     }
 
-    const sizeHit =
-      KNOWN_SIZES.find(
-        (s) => normalize(s) === normalize(query) || normalizeForSearch(s) === normalizeForSearch(query)
-      ) ?? null;
-    if (sizeHit) return { type: 'size', size: sizeHit };
-
     const products = await searchProductsFTS(query);
-    if (products.length) return { type: 'products', products, query };
+    if (products.length) return { type: "products", products, query };
 
-    return { type: 'none', query };
+    return { type: "none", query };
   },
 
-  // Utility fetches used elsewhere
   categoriesByIds: async (ids: string[]) => {
     if (!ids?.length) return [];
     const { data, error } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id,image_url,sort_order')
-      .in('id', ids);
+      .from("categories")
+      .select("id,name,slug,parent_id,image_url,sort_order")
+      .in("id", ids);
     if (error) throw error;
     const byId = new Map((data ?? []).map((c: any) => [c.id, c]));
     return ids.map((id) => byId.get(id)).filter(Boolean) as Category[];
   },
 
   getCategory: async (id: string) => {
-    if (!id) throw new Error('Invalid category id');
+    if (!id) throw new Error("Invalid category id");
     const { data, error } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id,image_url,sort_order')
-      .eq('id', id)
+      .from("categories")
+      .select("id,name,slug,parent_id,image_url,sort_order")
+      .eq("id", id)
       .single();
     if (error) throw error;
     return data as Category;
   },
-}; // end api
+
+  // Include children if the slug points to a parent category
+  categoryAndChildrenProductsBySlug: async (slug: string, limit = 200) => {
+    const { data: cat, error: e1 } = await supabase
+      .from("categories")
+      .select("id,slug,parent_id")
+      .eq("slug", slug)
+      .single();
+    if (e1 || !cat) return [];
+
+    const ids: string[] = [cat.id];
+    if (!cat.parent_id) {
+      const { data: kids } = await supabase
+        .from("categories")
+        .select("id")
+        .eq("parent_id", cat.id);
+      if (kids?.length) ids.push(...kids.map((k: any) => k.id));
+    }
+
+    const { data } = await supabase
+      .from("products")
+      .select(
+        "id,name,image_url,price,category_id,created_at,rating,review_count,badge"
+      )
+      .in("category_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    return (data ?? []) as Product[];
+  },
+};
 
 // ---------- Shared HTTP helper ----------
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(() => "");
     throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
   }
   return res.json() as Promise<T>;
 }
 
-// ---------- Optional helper for hero categories ----------
-export async function fetchHeroCategories(slugs: string[]): Promise<CategoryHero[]> {
+// ---------- Optional helper ----------
+export async function fetchHeroCategories(
+  slugs: string[]
+): Promise<CategoryHero[]> {
   const { data, error } = await supabase
-    .from('categories')
-    .select('id,name,slug,image_url')
-    .in('slug', slugs);
+    .from("categories")
+    .select("id,name,slug,image_url")
+    .in("slug", slugs);
   if (error) throw error;
 
   const bySlug = new Map((data ?? []).map((c: any) => [c.slug, c]));

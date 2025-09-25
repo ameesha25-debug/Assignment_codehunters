@@ -25,7 +25,7 @@ export default function HomePage() {
       <CategoryBar />
       <main className="space-y-10">
         <section className="container"><HeroCarousel /></section>
-        <section className="container"><PromoGrid /></section>
+        {/* <section className="container"><PromoGrid /></section> */}
         <section className="container"><TrendyProducts /></section>
         <section className="container"><CategoryHeroCarousel /></section>
          <section className="container"><BenefitsStrip  /></section>
