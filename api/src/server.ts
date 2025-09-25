@@ -5,11 +5,13 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes';
 import cartRoutes from './routes/cartRoutes'; 
 import { supabaseAdmin } from './db'; 
+import addressesRoutes from './routes/addressesRoutes';
+import ordersRoutes from './routes/ordersRoutes';
 
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT || 5000);
+const PORT = Number(process.env.PORT);
 
 // Trust proxy so Secure cookies work behind reverse proxies/load balancers
 app.set('trust proxy', 1);
@@ -175,6 +177,12 @@ app.get('/api/product/:id', async (req, res) => {
   if (error || !data) return res.status(404).json({ error: 'Not found' });
   res.json(data);
 });
+
+
+
+app.use('/api/addresses', addressesRoutes);
+app.use('/api/orders', ordersRoutes);
+
 
 // --- Start Server ---
 app.listen(PORT, () => {

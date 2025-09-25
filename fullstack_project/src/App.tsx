@@ -5,8 +5,12 @@ import AuthPage from '@/pages/AuthPage';
 import ProductPDP from '@/pages/ProductPDP';
 import SearchPLP from '@/pages/SearchPLP';
 import BasketPage from '@/pages/BasketPage'; // NEW
+import CheckoutPage from '@/pages/CheckoutPage';
+import OrdersPage from '@/pages/OrdersPage';
+import OrderDetailsPage from './pages/OrderDetailsPage';
 
 export default function App() {
+  console.log("APP is rendered")
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -18,6 +22,9 @@ export default function App() {
       <Route path="/basket" element={<BasketPage />} /> {/* NEW */}
       {/* Optional alias if header or links use /cart */}
       <Route path="/cart" element={<BasketPage />} />
+      <Route path="/checkout" element={<CheckoutPage />} />
+      <Route path="/orders" element={<OrdersPage />} />
+      <Route path="/orders/:id" element={<OrderDetailsPage />} />
     </Routes>
   );
 }
