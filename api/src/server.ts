@@ -7,10 +7,11 @@ import cartRoutes from './routes/cartRoutes';
 import { supabaseAdmin } from './db'; 
 import addressesRoutes from './routes/addressesRoutes';
 import ordersRoutes from './routes/ordersRoutes';
-
+import paymentsRoutes from './routes/paymentsRoutes';
 import wishlistRoutes from './routes/wishlistRoutes';
 import usersRoutes from "./routes/usersRoutes";
 import walletRoutes from "./routes/walletRoutes";
+
 dotenv.config();
 
 const app = express();
@@ -40,6 +41,9 @@ app.use("/api", walletRoutes);
 // --- Cart Routes ---
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+
+// --- Payment Routes ---
+app.use('/api/payments', paymentsRoutes);
 
 // --- Health Check ---
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
