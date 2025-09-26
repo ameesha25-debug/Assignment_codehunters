@@ -351,7 +351,11 @@ export default function CheckoutPage() {
       setPlacedId(order.id);
       setSuccessOpen(true);
       setTimeout(() => {
-        if (successOpen) window.location.href = '/orders';
+        if (successOpen) {
+          window.dispatchEvent(new CustomEvent('auth-changed', { detail: 'signed-in' }));
+          window.history.pushState({}, '', '/orders');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
       }, 2000);
     } catch (e:any) {
       alert(e?.message || 'Failed to place order');
@@ -492,7 +496,13 @@ export default function CheckoutPage() {
                         window.dispatchEvent(new CustomEvent('cart-updated'));
                         setPlacedId(orderId);
                         setSuccessOpen(true);
-                        setTimeout(() => { if (successOpen) window.location.href = '/orders'; }, 1200);
+                        setTimeout(() => {
+                          if (successOpen) {
+                            window.dispatchEvent(new CustomEvent('auth-changed', { detail: 'signed-in' }));
+                            window.history.pushState({}, '', '/orders');
+                            window.dispatchEvent(new PopStateEvent('popstate'));
+                          }
+                        }, 1200);
                       }}
                     />
                   </Elements>
@@ -575,7 +585,12 @@ export default function CheckoutPage() {
       <OrderSuccessModal
         open={successOpen}
         orderId={placedId}
-        onView={()=>{ setSuccessOpen(false); window.location.href='/orders'; }}
+        onView={() => {
+          setSuccessOpen(false);
+          window.dispatchEvent(new CustomEvent('auth-changed', { detail: 'signed-in' }));
+          window.history.pushState({}, '', '/orders');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
         onClose={()=>{ setSuccessOpen(false); }}
       />
     </>
