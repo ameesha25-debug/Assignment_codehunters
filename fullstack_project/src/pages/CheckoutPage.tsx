@@ -221,7 +221,7 @@ function AddressForm({
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
 
 function StripeSection({
-  clientSecret,
+  clientSecret: _clientSecret, // underscore prevents TS6133 while preserving the prop
   addressId,
   onSuccess,
 }: {

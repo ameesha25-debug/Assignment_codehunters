@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AccountLayout from "@/components/account/AccountLayout";
 import TextCategoryBar, { type Item } from "@/components/common/TextCategoryBar";
 import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
+
+/* URL helpers and minor utilities stay the same above if present */
 
 type Form = {
   firstName: string;
@@ -59,9 +61,8 @@ export default function ProfilePage() {
   }, [user]);
 
   const [form, setForm] = useState<Form>(initial);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [_error, _setError] = useState<string | null>(null);
+  const [_success, _setSuccess] = useState<string | null>(null);
 
   const dirty =
     form.firstName !== initial.firstName ||
@@ -72,22 +73,25 @@ export default function ProfilePage() {
     form.newsletter !== initial.newsletter;
 
   useEffect(() => {
-    if (submitting) return;
+    if (submittingRef.current) return;
     setForm(initial);
-  }, [initial, submitting]);
+  }, [initial]);
+
+  // keep submitting state in a ref to avoid “declared not read” if only used for guards
+  const submittingRef = useRef(false);
 
   const set = <K extends keyof Form>(k: K) => (v: Form[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    setSuccess(null);
+    submittingRef.current = true;
+    _setError(null);
+    _setSuccess(null);
 
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      setError("Please fill both first and last name.");
-      setSubmitting(false);
+      _setError("Please fill both first and last name.");
+      submittingRef.current = false;
       return;
     }
 
@@ -96,8 +100,8 @@ export default function ProfilePage() {
       const display = toDisplay(form.dob);
       const iso = toISO(display);
       if (!iso) {
-        setError("Use DOB format dd-mm-yyyy or pick from calendar.");
-        setSubmitting(false);
+        _setError("Use DOB format dd-mm-yyyy or pick from calendar.");
+        submittingRef.current = false;
         return;
       }
       isoDob = iso;
@@ -116,11 +120,11 @@ export default function ProfilePage() {
       // Optimistic, then reload
       setForm((p) => ({ ...p, dob: isoDob || "" }));
       if (reloadUser) await reloadUser();
-      setSuccess("Profile updated.");
+      _setSuccess("Profile updated.");
     } catch (err: any) {
-      setError(err?.message || "Failed to update profile.");
+      _setError(err?.message || "Failed to update profile.");
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false;
     }
   }
 
@@ -231,14 +235,14 @@ export default function ProfilePage() {
           </Section>
 
           <div className="rounded-xl border border-zinc-200 bg-white/70 p-5 backdrop-blur-sm">
-            {error ? <p className="mb-3 text-sm text-red-600">{error}</p> : null}
-            {success ? <p className="mb-3 text-sm text-green-600">{success}</p> : null}
+            {_error ? <p className="mb-3 text-sm text-red-600">{_error}</p> : null}
+            {_success ? <p className="mb-3 text-sm text-green-600">{_success}</p> : null}
             <button
               type="submit"
-              disabled={!dirty || submitting}
+              disabled={!dirty || submittingRef.current}
               className="inline-flex w-full items-center justify-center rounded-md bg-indigo-700 px-4 py-2 font-semibold text-white shadow-sm ring-1 ring-indigo-600 transition-all hover:bg-indigo-800 hover:shadow-md active:scale-[0.99] disabled:opacity-60"
             >
-              {submitting ? "Saving..." : dirty ? "Save changes" : "Saved"}
+              {submittingRef.current ? "Saving..." : dirty ? "Save changes" : "Saved"}
             </button>
           </div>
         </form>

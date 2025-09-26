@@ -1,5 +1,3 @@
-import React from "react";
-
 const gray = "bg-gray-200 ";
 
 // Generic line

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-type Item = { name: string; slug: string };
+export type Item = { name: string; slug: string };
 
 type Level1Props = {
   kind: "level1";

@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, type Category } from "@/lib/api";
 
 /* Top-level buckets */
@@ -65,11 +63,6 @@ export default function Footer() {
     }
     return dedup;
   }, [map, bagsChildren]);
-
-  function onSubscribe(e: FormEvent) {
-    e.preventDefault();
-  }
-
   return (
     <footer className="bg-muted/30">
       {/* Newsletter + help line (app badges removed) */}
@@ -125,19 +118,7 @@ export default function Footer() {
   );
 }
 
-function HelpLine() {
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
-          <path d="M6.6 10.8a15.05 15.05 0 006.6 6.6l2.2-2.2a1 1 0 011.1-.22c1.2.48 2.5.74 3.8.74a1 1 0 011 1V20a1 1 0 01-1 1C11.85 21 3 12.15 3 2a1 1 0 011-1h3.28a1 1 0 011 1c0 1.31.26 2.6.74 3.8a1 1 0 01-.22 1.1L6.6 10.8z" />
-        </svg>
-        <p className="text-sm font-medium">For any help, call us at 1800‑267‑4444</p>
-      </div>
-      <p className="text-xs opacity-90">Mon–Sat 8 AM–10 PM · Sun 10 AM–7 PM</p>
-    </div>
-  );
-}
+
 
 function ContactStrip() {
   return (

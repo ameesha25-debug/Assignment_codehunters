@@ -1,5 +1,3 @@
-import React from "react";
-
 type Benefit = { img: string; alt: string; title: string; subtitle: string };
 
 const benefits: Benefit[] = [

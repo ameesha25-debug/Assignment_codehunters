@@ -76,7 +76,7 @@ export default function CategoryPLP() {
   const [category, setCategory] = useState<Category | null>(null);
   const [shopFor, setShopFor] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortKey>("recommended");
   const [showMobileFilters, setShowMobileFilters] = useState(false);

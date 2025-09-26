@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 // Adjust this to your central axios/fetch wrapper if present
 async function apiMe() {
@@ -24,6 +24,7 @@ type AuthState = {
   loading: boolean;
   reloadUser: () => Promise<void>;
   signOut: () => Promise<void>;
+  signIn: (token: string, user: User) => void; // added
 };
 
 const AuthCtx = createContext<AuthState | undefined>(undefined);
@@ -52,9 +53,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await apiLogout();
     setUser(null);
+    localStorage.removeItem('token');
   };
 
-  const value = useMemo(() => ({ user, loading, reloadUser, signOut }), [user, loading]);
+  const signIn = (token: string, u: User) => {
+    // Persist client token for API calls that need Bearer; cookies still drive server session
+    localStorage.setItem('token', token);
+    setUser(u);
+  };
+
+  const value = useMemo(
+    () => ({ user, loading, reloadUser, signOut, signIn }),
+    [user, loading]
+  );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

@@ -1,7 +1,7 @@
+// components/products/ProductCarousel.tsx
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import ProductCard from "@/components/products/ProductCard";
-import  type { Product } from "@/components/products/ProductCard";
-
+import type { Product } from "@/lib/api";
 
 export default function ProductCarousel({ items, title }: { items: Product[]; title?: string }) {
   return (

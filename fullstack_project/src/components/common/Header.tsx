@@ -15,91 +15,91 @@ import { cart } from "@/lib/cart";
 
 // user dropdown that unifies account navigation
 import UserMenu from "@/components/account/UserMenu";
-function AccountMenu({
-  name,
-  credit = 0,
-  onNavigate,
-  onSignOut,
-}: {
-  name: string;
-  credit?: number;
-  onNavigate: (to: string) => void;
-  onSignOut: () => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
+// function AccountMenu({
+//   name,
+//   credit = 0,
+//   onNavigate,
+//   onSignOut,
+// }: {
+//   name: string;
+//   credit?: number;
+//   onNavigate: (to: string) => void;
+//   onSignOut: () => Promise<void>;
+// }) {
+//   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    if (open) window.addEventListener("keydown", onEsc);
-    return () => window.removeEventListener("keydown", onEsc);
-  }, [open]);
+//   useEffect(() => {
+//     function onEsc(e: KeyboardEvent) {
+//       if (e.key === "Escape") setOpen(false);
+//     }
+//     if (open) window.addEventListener("keydown", onEsc);
+//     return () => window.removeEventListener("keydown", onEsc);
+//   }, [open]);
 
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="rounded-full border p-2 hover:bg-zinc-50"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Account menu"
-        title={name}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="8" r="4" stroke="currentColor" />
-          <path d="M4 20c1.8-3.2 5-5 8-5s6.2 1.8 8 5" stroke="currentColor" />
-        </svg>
-      </button>
+//   return (
+//     <div className="relative">
+//       <button
+//         onClick={() => setOpen((v) => !v)}
+//         className="rounded-full border p-2 hover:bg-zinc-50"
+//         aria-haspopup="menu"
+//         aria-expanded={open}
+//         aria-label="Account menu"
+//         title={name}
+//       >
+//         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+//           <circle cx="12" cy="8" r="4" stroke="currentColor" />
+//           <path d="M4 20c1.8-3.2 5-5 8-5s6.2 1.8 8 5" stroke="currentColor" />
+//         </svg>
+//       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 mt-2 w-72 rounded-md border bg-white shadow-lg z-50"
-          onMouseLeave={() => setOpen(false)}
-        >
-          <div className="py-2">
-            {[
-              { label: "My Account", to: "/account" },
-              { label: "Favourites", to: "/wishlist" },
-              { label: "Order History", to: "/orders" },
-              { label: "My Addresses", to: "/addresses" },
-              { label: "Payment", to: "/payment" },
-              { label: `My Credit ₹${credit ?? 0}`, to: "/wallet" },
-              { label: "Communication", to: "/communication" },
-              { label: "Reviews", to: "/reviews" },
-              { label: "Click & Collect", to: "/click-collect" },
-              { label: "Landmark Rewards", to: "/rewards" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                role="menuitem"
-                className="w-full text-left px-4 py-2 hover:bg-zinc-50"
-                onClick={() => {
-                  setOpen(false);
-                  onNavigate(item.to);
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-            <div className="my-2 h-px bg-zinc-200" />
-            <button
-              role="menuitem"
-              className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
-              onClick={async () => {
-                await onSignOut();
-                setOpen(false);
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+//       {open && (
+//         <div
+//           role="menu"
+//           className="absolute right-0 mt-2 w-72 rounded-md border bg-white shadow-lg z-50"
+//           onMouseLeave={() => setOpen(false)}
+//         >
+//           <div className="py-2">
+//             {[
+//               { label: "My Account", to: "/account" },
+//               { label: "Favourites", to: "/wishlist" },
+//               { label: "Order History", to: "/orders" },
+//               { label: "My Addresses", to: "/addresses" },
+//               { label: "Payment", to: "/payment" },
+//               { label: `My Credit ₹${credit ?? 0}`, to: "/wallet" },
+//               { label: "Communication", to: "/communication" },
+//               { label: "Reviews", to: "/reviews" },
+//               { label: "Click & Collect", to: "/click-collect" },
+//               { label: "Landmark Rewards", to: "/rewards" },
+//             ].map((item) => (
+//               <button
+//                 key={item.label}
+//                 role="menuitem"
+//                 className="w-full text-left px-4 py-2 hover:bg-zinc-50"
+//                 onClick={() => {
+//                   setOpen(false);
+//                   onNavigate(item.to);
+//                 }}
+//               >
+//                 {item.label}
+//               </button>
+//             ))}
+//             <div className="my-2 h-px bg-zinc-200" />
+//             <button
+//               role="menuitem"
+//               className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50"
+//               onClick={async () => {
+//                 await onSignOut();
+//                 setOpen(false);
+//               }}
+//             >
+//               Sign Out
+//             </button>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 export default function Header() {
   const [authOpen, setAuthOpen] = useState(false);

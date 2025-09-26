@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import {  useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LogoutIcon, UserIcon, HeartIcon, OrdersIcon, AddressIcon, CreditIcon } from "@/assets/icons/account";
 import type { ReactNode } from "react";
