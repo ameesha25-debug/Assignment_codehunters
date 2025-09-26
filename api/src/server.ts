@@ -9,6 +9,8 @@ import addressesRoutes from './routes/addressesRoutes';
 import ordersRoutes from './routes/ordersRoutes';
 import paymentsRoutes from './routes/paymentsRoutes';
 import wishlistRoutes from './routes/wishlistRoutes';
+import usersRoutes from "./routes/usersRoutes";
+import walletRoutes from "./routes/walletRoutes";
 
 dotenv.config();
 
@@ -33,6 +35,8 @@ app.use(cookieParser());
 // --- Auth Routes ---
 // NOTE: mount under /api/auth and ensure routes inside set/clear HttpOnly cookies.
 app.use('/api/auth', authRoutes);
+app.use("/api/users", usersRoutes);
+app.use("/api", walletRoutes);
 
 // --- Cart Routes ---
 app.use('/api/cart', cartRoutes);

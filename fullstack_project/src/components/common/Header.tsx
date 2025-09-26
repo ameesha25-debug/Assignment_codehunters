@@ -1,3 +1,4 @@
+// src/components/common/Header.tsx
 import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { cart } from "@/lib/cart";
 
+// user dropdown that unifies account navigation
+import UserMenu from "@/components/account/UserMenu";
 function AccountMenu({
   name,
   credit = 0,
@@ -209,18 +212,24 @@ export default function Header() {
   }, [user]);
 
   const handleSignIn = async (form: { mobile: string; password: string }) => {
-    await api.loginUser(form.mobile, form.password);
-    setAuthOpen(false);
-    if (reloadUser) await reloadUser();
-    else window.location.reload();
-  };
+  await api.loginUser(form.mobile, form.password);
+  setAuthOpen(false);
+  if (reloadUser) {
+    await reloadUser();
+  }
+  // Tell open pages (wishlist/basket) to refetch
+  window.dispatchEvent(new CustomEvent("auth-changed", { detail: "signed-in" }));
+};
 
-  const handleSignUp = async (form: { mobile: string; password: string }) => {
-    await api.registerUser(form.mobile, form.password);
-    setAuthOpen(false);
-    if (reloadUser) await reloadUser();
-    else window.location.reload();
-  };
+const handleSignUp = async (form: { mobile: string; password: string }) => {
+  await api.registerUser(form.mobile, form.password);
+  setAuthOpen(false);
+  if (reloadUser) {
+    await reloadUser();
+  }
+  window.dispatchEvent(new CustomEvent("auth-changed", { detail: "signed-in" }));
+};
+
 
   const currentQ = new URLSearchParams(location.search).get("q") ?? "";
 
@@ -337,14 +346,10 @@ export default function Header() {
               Sign in / Sign up
             </Button>
           ) : (
-            <AccountMenu
-              name={user.name || (user as any).mobile || "Account"}
-              credit={(user as any).credit ?? 0}
-              onNavigate={(to) => navigate(to)}
-              onSignOut={onSignOut}
-            />
+            <UserMenu isAuthenticated={!!user} onLogout={onSignOut} />
           )}
 
+          {/* Favourites icon opens the same page as account/favourites */}
           <Link
             to="/wishlist"
             className="grid place-items-center px-2 py-1 text-[11px] sm:text-xs text-zinc-600 hover:text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"

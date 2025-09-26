@@ -1,3 +1,4 @@
+// src/lib/api.ts
 import { supabase } from "./supabase";
 
 export const API_BASE =
@@ -156,7 +157,36 @@ async function searchProductsFTS(query: string) {
   }>;
 }
 
+// ---------- Shared HTTP helper ----------
+// Auto-includes credentials for cookie-based auth.
+// Optionally includes Authorization header if a token is present.
+function authHeaders(init?: RequestInit) {
+  const headers = new Headers(init?.headers || {});
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  // Optional token support if you later switch from cookies to bearer:
+  const token = localStorage.getItem("token");
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return headers;
+}
+
+async function http<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",
+    ...init,
+    headers: authHeaders(init),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 // ---------- Public API ----------
+export type Api = typeof api;
+
 export const api = {
   roots: () => http<Category[]>("/api/categories"),
 
@@ -253,6 +283,7 @@ export const api = {
     return list;
   },
 
+  // Authentication API calls
   registerUser: async (mobile: string, password: string) => {
     const res = await fetch(`${API_BASE}/api/auth/register`, {
       method: "POST",
@@ -283,6 +314,22 @@ export const api = {
     return data;
   },
 
+  // Update current user's profile (firstName, lastName, email)
+  updateProfile: async (body: { firstName: string; lastName: string; email: string }) => {
+    const res = await fetch(`${API_BASE}/api/users/me`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) {
+      throw new Error((data as any)?.error || (data as any)?.message || res.statusText);
+    }
+    return data;
+  },
+
+  // resolve free‑text search into category/subcategory/size/products/none
   resolveSearch: async (q: string): Promise<SearchResolution> => {
     const query = q?.trim() ?? "";
     if (!query) return { type: "none", query: "" };
