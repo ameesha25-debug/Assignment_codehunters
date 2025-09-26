@@ -147,8 +147,8 @@ export const refresh = async (_req: Request, res: Response) => {
 export const logout = async (req: Request, res: Response) => {
   console.log('Logging out user');
   console.log('Cookies:', req.cookies);
-  res.clearCookie('access', { path: '/' });
-  res.clearCookie('refresh', { path: '/api/auth' });
+  res.clearCookie('access', { path: '/', sameSite: PROD ? 'none' : 'lax', secure: PROD });
+  res.clearCookie('refresh', { path: '/api/auth', sameSite: PROD ? 'none' : 'lax', secure: PROD });
   console.log('Cookies after clearing:', req.cookies, res.getHeader('Set-Cookie'));
   return res.status(204).end();
 };
