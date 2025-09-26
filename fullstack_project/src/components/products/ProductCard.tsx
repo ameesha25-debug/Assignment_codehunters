@@ -103,11 +103,13 @@ export default function ProductCard({ product }: { product: Product }) {
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           loading="lazy"
         />
-        {product.badge && (
-          <span className="absolute left-3 top-3 z-10 rounded bg-yellow-400 px-2 py-1 text-xs font-semibold shadow">
-            {product.badge}
-          </span>
-        )}
+     {product.badge && (
+  <span className="absolute left-3 top-3 z-10 rounded bg-white text-black px-2 py-1 text-xs font-semibold shadow ring-1 ring-black/10">
+    {product.badge}
+  </span>
+)}
+
+
 
         {/* Basket icon (hover)
         <button

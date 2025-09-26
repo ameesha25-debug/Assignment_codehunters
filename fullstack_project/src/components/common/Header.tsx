@@ -116,9 +116,9 @@ export default function Header() {
     navigate({ pathname: "/search", search: `?${params.toString()}` });
   }
 
-  const { user, signOut, reloadUser } = (useAuth() as ReturnType<
+  const { user, signOut, reloadUser } = useAuth() as ReturnType<
     typeof useAuth
-  >) as {
+  > as {
     user: any;
     signOut: () => Promise<void>;
     reloadUser?: () => Promise<void>;
@@ -134,7 +134,10 @@ export default function Header() {
   useEffect(() => {
     function onOpenAuth(e: Event) {
       setAuthOpen(true);
-      const detail = (e as CustomEvent).detail as "signin" | "signup" | undefined;
+      const detail = (e as CustomEvent).detail as
+        | "signin"
+        | "signup"
+        | undefined;
       setMode(detail || "signin");
     }
     window.addEventListener("open-auth" as any, onOpenAuth);
@@ -302,10 +305,10 @@ export default function Header() {
 
           <Link
             to="/"
-            className="font-semibold text-2xl tracking-tight leading-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
-            aria-label="Nykaaish home"
+            className="ml-2 font-semibold text-2xl tracking-tight leading-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 rounded"
+            aria-label="TrendLine home"
           >
-            nykaaish
+            TrendLine
           </Link>
         </div>
 
@@ -386,13 +389,21 @@ export default function Header() {
         <Sheet open={authOpen} onOpenChange={setAuthOpen}>
           <SheetContent side="right" className="w-full max-w-md p-6">
             <h2 className="text-xl font-semibold mb-4">
-              {mode === "signin" ? "Sign In to your account" : "Create a new account"}
+              {mode === "signin"
+                ? "Sign In to your account"
+                : "Create a new account"}
             </h2>
 
             {mode === "signin" ? (
-              <SignInForm onSwitch={() => setMode("signup")} onSubmit={handleSignIn} />
+              <SignInForm
+                onSwitch={() => setMode("signup")}
+                onSubmit={handleSignIn}
+              />
             ) : (
-              <SignUpForm onSwitch={() => setMode("signin")} onSubmit={handleSignUp} />
+              <SignUpForm
+                onSwitch={() => setMode("signin")}
+                onSubmit={handleSignUp}
+              />
             )}
           </SheetContent>
         </Sheet>

@@ -179,7 +179,7 @@ export default function CategoryPLP() {
 
       {/* Common parent category bar */}
       <div className="mb-2">
-        <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
+       
         <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
           <div className="container">
             <TextCategoryBar

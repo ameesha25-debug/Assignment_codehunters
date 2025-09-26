@@ -12,7 +12,7 @@ export type SearchBarProps = {
 
 export default function SearchBar({
   className,
-  placeholder = "Search for products, brands and more",
+  placeholder = "Search for categories, products and more",
   defaultValue,
   onSubmitQuery,
 }: SearchBarProps) {

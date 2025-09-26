@@ -8,7 +8,7 @@ function getUserId(req: Request) {
   return (req as any).userId as string | undefined;
 }
 
-// Types to aid IDE
+// Types to aid IDE (kept for clarity; not strictly required)
 type AddressPick = {
   full_name: string;
   phone: string;
@@ -24,11 +24,11 @@ type OrderWithAddress = {
   created_at: string;
   amount: number;
   status: 'PLACED' | 'CANCELLED';
-  payment_method: 'COD';
+  payment_method: 'COD' | 'Stripe';
   addresses: AddressPick;
 };
 
-// POST /api/orders -> create COD order from cart
+// POST /api/orders -> create COD order from cart (unchanged)
 router.post('/', requireUser, async (req: Request, res: Response) => {
   const userId = getUserId(req);
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -55,18 +55,21 @@ router.post('/', requireUser, async (req: Request, res: Response) => {
     if (!cartRows?.length) return res.status(400).json({ error: 'Cart empty' });
 
     // Product snapshots
-    const pids = cartRows.map(r => r.product_id);
+    const pids = cartRows.map((r) => r.product_id);
     const { data: products, error: prodErr } = await supabaseAdmin
       .from('products')
       .select('id, name, price, image_url')
       .in('id', pids);
     if (prodErr) return res.status(400).json({ error: prodErr.message });
-    const pmap = new Map((products || []).map(p => [p.id, p] as const));
+    const pmap = new Map((products || []).map((p) => [p.id, p] as const));
 
     // Amount
-    const amount = cartRows.reduce((sum, r) => sum + (pmap.get(r.product_id)?.price ?? 0) * r.qty, 0);
+    const amount = cartRows.reduce(
+      (sum, r) => sum + (pmap.get(r.product_id)?.price ?? 0) * r.qty,
+      0,
+    );
 
-    // Create order
+    // Create order (COD)
     const { data: order, error: ordErr } = await supabaseAdmin
       .from('orders')
       .insert([{ user_id: userId, address_id, amount, payment_method: 'COD', status: 'PLACED' }])
@@ -75,7 +78,7 @@ router.post('/', requireUser, async (req: Request, res: Response) => {
     if (ordErr) return res.status(400).json({ error: ordErr.message });
 
     // Items snapshot
-    const orderItems = cartRows.map(r => {
+    const orderItems = cartRows.map((r) => {
       const p = pmap.get(r.product_id);
       return {
         order_id: order!.id,
@@ -112,7 +115,7 @@ router.get('/', requireUser, async (req: Request, res: Response) => {
       .order('created_at', { ascending: false });
     if (error) return res.status(400).json({ error: error.message });
 
-    const ids = (rows ?? []).map(o => o.id);
+    const ids = (rows ?? []).map((o) => o.id);
 
     // item_count by summing qty
     const counts: Record<string, number> = {};
@@ -126,7 +129,10 @@ router.get('/', requireUser, async (req: Request, res: Response) => {
     }
 
     // previews (0–3)
-    const previews: Record<string, Array<{ name: string; size: string | null; image: string | null }>> = {};
+    const previews: Record<
+      string,
+      Array<{ name: string; size: string | null; image: string | null }>
+    > = {};
     if (ids.length > 0) {
       const { data: items2, error: pErr } = await supabaseAdmin
         .from('order_items')
@@ -137,17 +143,19 @@ router.get('/', requireUser, async (req: Request, res: Response) => {
 
       for (const it of items2 ?? []) {
         const arr = previews[it.order_id] || [];
-        if (arr.length < 3) arr.push({ name: it.name, size: it.size ?? null, image: it.image_url ?? null });
+        if (arr.length < 3)
+          arr.push({ name: it.name, size: it.size ?? null, image: it.image_url ?? null });
         previews[it.order_id] = arr;
       }
     }
 
-    const result = (rows ?? []).map(o => ({
+    const result = (rows ?? []).map((o) => ({
       id: o.id,
       created_at: o.created_at,
       amount: o.amount,
       status: o.status as 'PLACED' | 'CANCELLED',
-      payment_method: o.payment_method as 'COD',
+      // IMPORTANT: pass through DB value so 'Stripe' appears when applicable
+      payment_method: o.payment_method as 'COD' | 'Stripe',
       address_id: o.address_id,
       item_count: counts[o.id] ?? 0,
       items: previews[o.id] ?? [],
@@ -168,7 +176,9 @@ router.get('/:id', requireUser, async (req: Request, res: Response) => {
     // Fetch order by id + user
     const { data: order, error: oErr } = await supabaseAdmin
       .from('orders')
-      .select('id, created_at, amount, status, payment_method, address_id, user_id')
+      .select(
+        'id, created_at, amount, status, payment_method, payment_status, payment_intent_id, address_id, user_id',
+      )
       .eq('id', id)
       .eq('user_id', userId)
       .single();
@@ -209,12 +219,15 @@ router.get('/:id', requireUser, async (req: Request, res: Response) => {
       id: order.id,
       created_at: order.created_at,
       status: order.status as 'PLACED' | 'CANCELLED',
-      payment_method: order.payment_method as 'COD',
+      payment_method: order.payment_method as 'COD' | 'Stripe',
+      // Optional extras (safe for clients that ignore them)
+      payment_status: (order as any).payment_status ?? undefined,
+      payment_intent_id: (order as any).payment_intent_id ?? undefined,
       amount: total,
       price: { mrp, discount, shipping_fee, platform_fee, total },
       address_block,
-      items: (items ?? []).map(x => ({
-        product_id: x.product_id,   // expose for PDP link
+      items: (items ?? []).map((x) => ({
+        product_id: x.product_id, // expose for PDP link
         name: x.name,
         image: x.image_url,
         size: x.size,
