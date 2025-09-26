@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import type { Product } from '@/lib/api';
-import { cart } from '@/lib/cart';
+
 import { useAuth } from '@/lib/auth';
 import { wishlist } from '@/lib/wishlist';
 import { useWishlist } from '@/wishlist/useWishlist';
@@ -13,8 +13,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const displayTitle = product.name ?? '';
   const displayImage = product.image_url ?? `https://picsum.photos/seed/${product.id}/600/800`;
 
-  // Heuristic: set to true if this product/category requires size selection
-  const productRequiresSize = false; // TODO: replace with an actual flag or category check
+ 
 
   // Wishlist integration
   const { inWishlist, refresh } = useWishlist();
@@ -44,31 +43,7 @@ export default function ProductCard({ product }: { product: Product }) {
     [user, isWished, product.id, refresh]
   );
 
-  async function handleAddToBasket(e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user) {
-      window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
-      return;
-    }
-    if (productRequiresSize) {
-      window.location.assign(`/product/${product.id}`);
-      return;
-    }
-    try {
-      await cart.addItem(product.id, 1, null);
-      window.dispatchEvent(new CustomEvent('cart-updated'));
-      const btn = (e.currentTarget as HTMLButtonElement) || null;
-      if (btn) {
-        btn.classList.add('ring', 'ring-amber-400');
-        setTimeout(() => {
-          if (btn) btn.classList.remove('ring', 'ring-amber-400');
-        }, 500);
-      }
-    } catch (err: any) {
-      alert(err?.message || 'Failed to add to basket');
-    }
-  }
+ 
 
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-sm">
