@@ -10,7 +10,7 @@ type Level1Props = {
 };
 
 type Level2Props = {
-  kind: "level2";               // kept for compatibility, not used now
+  kind: "level2";
   parentSlug: string;
   items: Item[];
   activeSlug?: string;
@@ -23,40 +23,47 @@ export default function TextCategoryBar(props: Props) {
 
   return (
     <nav aria-label="Categories" className="mb-3">
-      {/* Top grey line, full-bleed */}
-      <div className="w-screen border-t border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]" />
+      {/* Full-bleed wrapper, with an inner rail line */}
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+        <div className="border-b border-gray-200" />
+        <div className="py-2">
+          <ul className="relative z-10 mx-auto flex max-w-[1200px] justify-center gap-8">
+            {items.map((it) => {
+              const href =
+                props.kind === "level2"
+                  ? `/category/${("parentSlug" in props ? props.parentSlug : "")}/${it.slug}`
+                  : `${("basePath" in props && props.basePath ? props.basePath : "/category")}/${it.slug}`;
 
-      {/* Bar wrapper with extra height */}
-      <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] py-2">
-        <ul className="mx-auto flex max-w-[1200px] justify-center gap-8">
-          {items.map((it) => {
-            // Always prefer basePath when provided
-            const href =
-              props.kind === "level2"
-                ? `/category/${("parentSlug" in props ? props.parentSlug : "")}/${it.slug}`
-                : `${("basePath" in props && props.basePath ? props.basePath : "/category")}/${it.slug}`;
+              const active = activeSlug === it.slug;
 
-            const active = activeSlug === it.slug;
+              return (
+                <li key={it.slug} className="shrink-0 group">
+                  <Link
+                    to={href}
+                    className={[
+                      "relative inline-block py-3.5 text-sm font-medium transition-colors",
+                      active
+                        ? "text-yellow-500" // active text is yellow
+                        : "text-muted-foreground hover:text-yellow-500", // hover turns text yellow
+                    ].join(" ")}
+                  >
+                    <span>{it.name}</span>
 
-            return (
-              <li key={it.slug} className="shrink-0 group">
-                <Link
-                  to={href}
-                  className={`relative inline-block py-3.5 text-sm font-medium transition-colors ${
-                    active ? "text-foreground" : "text-muted-foreground hover:text-yellow-500"
-                  }`}
-                >
-                  <span>{it.name}</span>
-                  <span
-                    className={`pointer-events-none absolute left-0 -bottom-[2px] h-[3px] rounded-full transition-all duration-200 ${
-                      active ? "w-full bg-yellow-400" : "w-0 bg-yellow-400 group-hover:w-full"
-                    }`}
-                  />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+                    {/* Underline: persistent yellow for active; animated in on hover for inactive */}
+                    <span
+                      className={[
+                        "pointer-events-none absolute left-0 -bottom-[2px] h-[3px] rounded-full transition-all duration-200",
+                        "bg-yellow-400",
+                        active ? "w-full" : "w-0 group-hover:w-full",
+                      ].join(" ")}
+                      style={{ transform: "translateY(-2px)" }} // sit over the rail
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
     </nav>
   );

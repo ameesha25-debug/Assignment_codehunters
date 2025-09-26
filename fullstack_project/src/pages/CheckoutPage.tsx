@@ -4,6 +4,11 @@ import { cart } from '@/lib/cart';
 import { addresses, type Address } from '@/lib/addresses';
 import { orders } from '@/lib/orders';
 
+// NEW: Stripe
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { createPaymentIntent, stripeComplete } from '@/lib/payments';
+
 type Step = 'shipping' | 'payment';
 
 function OrderSuccessModal({
@@ -48,15 +53,13 @@ function AddressForm({
 
   // helpers
   const touchOnFirstChange = (key: string, value: string) => {
-    if (!touched[key] && value.length > 0) {
-      setTouched((t) => ({ ...t, [key]: true }));
-    }
+    if (!touched[key] && value.length > 0) setTouched((t) => ({ ...t, [key]: true }));
   };
 
   const err: Record<string, string | null> = {
     full_name:
       (touched.full_name && !f.full_name) ? 'Full name is required'
-      : (f.full_name && !nameRe.test(f.full_name)) ? 'Enter a valid name (letters and spaces only)'
+      : (f.full_name && !nameRe.test(f.full_name!)) ? 'Enter a valid name (letters and spaces only)'
       : null,
 
     phone:
@@ -70,12 +73,12 @@ function AddressForm({
 
     city:
       (touched.city && !f.city) ? 'City is required'
-      : (f.city && !cityStateRe.test(f.city)) ? 'Enter a valid city (letters and spaces only)'
+      : (f.city && !cityStateRe.test(f.city!)) ? 'Enter a valid city (letters and spaces only)'
       : null,
 
     state:
       (touched.state && !f.state) ? 'State is required'
-      : (f.state && !cityStateRe.test(f.state)) ? 'Enter a valid state (letters and spaces only)'
+      : (f.state && !cityStateRe.test(f.state!)) ? 'Enter a valid state (letters and spaces only)'
       : null,
 
     pincode:
@@ -215,6 +218,57 @@ function AddressForm({
   );
 }
 
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+
+function StripeSection({
+  clientSecret,
+  addressId,
+  onSuccess,
+}: {
+  clientSecret: string;
+  addressId: string;
+  onSuccess: (orderId: string) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
+
+  const onPay = async () => {
+    if (!stripe || !elements) return;
+    setBusy(true);
+    const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+    if (error) {
+      alert(error.message || 'Payment failed');
+      setBusy(false);
+      return;
+    }
+    if (paymentIntent?.status === 'succeeded') {
+      try {
+        const r = await stripeComplete(addressId, paymentIntent.id);
+        onSuccess(r.id);
+      } catch (e: any) {
+        alert(e?.message || 'Failed to create order');
+      }
+    } else {
+      alert(`Payment status: ${paymentIntent?.status}`);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <PaymentElement />
+      <button
+        className="rounded bg-amber-500 text-white px-4 py-2 font-semibold disabled:opacity-50"
+        disabled={busy}
+        onClick={onPay}
+      >
+        {busy ? 'Processing…' : 'Pay now'}
+      </button>
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const [addrList, setAddrList] = useState<Address[]>([]);
   const [selectedAddr, setSelectedAddr] = useState<string|null>(null);
@@ -223,7 +277,8 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
 
   const [step, setStep] = useState<Step>('shipping');
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | null>(null);
+  // NEW: include STRIPE method
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'STRIPE' | null>(null);
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [placedId, setPlacedId] = useState<string>('');
@@ -244,6 +299,10 @@ export default function CheckoutPage() {
   const grandTotal = Math.max(0, totalMRP - offerDiscount + platformFee);
   const totalText = useMemo(()=>`₹${grandTotal}`, [grandTotal]);
   const [showDetails, setShowDetails] = useState(false);
+
+  // NEW: Stripe client secret
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [startingStripe, setStartingStripe] = useState(false);
 
   useEffect(()=> {
     (async ()=>{
@@ -298,6 +357,20 @@ export default function CheckoutPage() {
       alert(e?.message || 'Failed to place order');
     } finally {
       setPlacing(false);
+    }
+  }
+
+  // NEW: start Stripe PI and show PaymentElement
+  async function startStripe() {
+    if (!selectedAddr || clientSecret || startingStripe) return;
+    setStartingStripe(true);
+    try {
+      const { client_secret } = await createPaymentIntent(selectedAddr);
+      setClientSecret(client_secret);
+    } catch (e:any) {
+      alert(e?.message || 'Failed to start payment');
+    } finally {
+      setStartingStripe(false);
     }
   }
 
@@ -383,6 +456,20 @@ export default function CheckoutPage() {
                     <div className="font-medium">Cash on Delivery</div>
                     <div className="text-xs text-zinc-600 mt-1">Pay at delivery by cash/card/UPI</div>
                   </button>
+
+                  {/* NEW: Stripe tile */}
+                  <button
+                    type="button"
+                    className={`text-left border rounded p-3 ${paymentMethod==='STRIPE' ? 'ring-2 ring-amber-500' : ''}`}
+                    onClick={async () => {
+                      setPaymentMethod('STRIPE');
+                      await startStripe();
+                    }}
+                    disabled={!selectedAddr || startingStripe}
+                  >
+                    <div className="font-medium">Card / UPI (Stripe)</div>
+                    <div className="text-xs text-zinc-600 mt-1">Secure checkout via Stripe</div>
+                  </button>
                 </div>
 
                 {paymentMethod === 'COD' && (
@@ -393,6 +480,22 @@ export default function CheckoutPage() {
                   >
                     {placing ? 'Placing…' : 'Place order'}
                   </button>
+                )}
+
+                {/* NEW: Stripe PaymentElement and Pay button */}
+                {paymentMethod === 'STRIPE' && clientSecret && selectedAddr && (
+                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <StripeSection
+                      clientSecret={clientSecret}
+                      addressId={selectedAddr}
+                      onSuccess={(orderId) => {
+                        window.dispatchEvent(new CustomEvent('cart-updated'));
+                        setPlacedId(orderId);
+                        setSuccessOpen(true);
+                        setTimeout(() => { if (successOpen) window.location.href = '/orders'; }, 1200);
+                      }}
+                    />
+                  </Elements>
                 )}
               </section>
             )}
