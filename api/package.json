@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "npx tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "postinstall": "chmod +x ./node_modules/.bin/tsc"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
