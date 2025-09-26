@@ -2,7 +2,7 @@ import Header from "@/components/common/Header";
 import CategoryBar from "@/components/common/CategoryBar";
 import HeroCarousel from "@/components/home/HeroCarousel";
 import TrendyProducts from "@/components/home/TrendyProducts";
-import EmailSubscribe from "@/components/forms/EmailSubscribe";
+
 import Footer from "@/components/common/Footer";
 // import type { Product } from "@/components/products/ProductCard";
 import CategoryHeroCarousel from "@/components/home/CategoryHeroCarousel";
@@ -23,11 +23,7 @@ export default function HomePage() {
         <section className="container"><CategoryHeroCarousel /></section>
         <section className="container"><ExploreMore /></section>
         <section className="container"><BenefitsStrip  /></section>
-        {/* <section className="container">
-          <ProductCarousel title="Recommended for you" items={carouselItems} />
-        </section> */}
-        <section className="container"><EmailSubscribe /></section>
-        
+     
       </main>
       <Footer />
     </>

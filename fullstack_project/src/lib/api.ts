@@ -419,16 +419,6 @@ export const api = {
   },
 };
 
-// ---------- Shared HTTP helper ----------
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
-  }
-  return res.json() as Promise<T>;
-}
-
 // ---------- Optional helper ----------
 export async function fetchHeroCategories(
   slugs: string[]
