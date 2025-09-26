@@ -145,7 +145,10 @@ export const refresh = async (_req: Request, res: Response) => {
  
 // Clears cookies; optional revoke can be added if you store refresh tokens in DB
 export const logout = async (req: Request, res: Response) => {
+  console.log('Logging out user');
+  console.log('Cookies:', req.cookies);
   res.clearCookie('access', { path: '/' });
   res.clearCookie('refresh', { path: '/api/auth' });
+  console.log('Cookies after clearing:', req.cookies, res.getHeader('Set-Cookie'));
   return res.status(204).end();
 };
