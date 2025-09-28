@@ -1,350 +1,18 @@
-// // // src/pages/WishlistPage.tsx
-// // import { useEffect, useMemo, useState } from 'react';
-// // import Header from '@/components/common/Header';
-// // import { wishlist, type WishlistItem } from '@/lib/wishlist';
-// // import { cart } from '@/lib/cart';
-// // import { Link } from 'react-router-dom';
-
-// // export default function WishlistPage() {
-// //   const [items, setItems] = useState<WishlistItem[]>([]);
-// //   const [loading, setLoading] = useState(true);
-// //   const [err, setErr] = useState<string | null>(null);
-// //   const [busy, setBusy] = useState<Record<string, boolean>>({});
-
-// //   async function load() {
-// //     setLoading(true);
-// //     setErr(null);
-// //     try {
-// //       const data = await wishlist.get();
-// //       setItems(data.items || []);
-// //     } catch (e: any) {
-// //       setErr(e?.message || 'Failed to load favourites');
-// //     } finally {
-// //       setLoading(false);
-// //     }
-// //   }
-
-// //   useEffect(() => {
-// //     load();
-// //   }, []);
-
-// //   useEffect(() => {
-// //     function onWishlistUpdated() {
-// //       load();
-// //     }
-// //     window.addEventListener('wishlist-updated', onWishlistUpdated);
-// //     return () => window.removeEventListener('wishlist-updated', onWishlistUpdated);
-// //   }, []);
-
-// //   const isEmpty = !loading && items.length === 0;
-
-// //   async function moveToBasket(it: WishlistItem) {
-// //     try {
-// //       setBusy((b) => ({ ...b, [it.id]: true }));
-// //       await cart.addItem(it.product_id, 1, it.size ?? null);
-// //       window.dispatchEvent(new CustomEvent('cart-updated'));
-// //       await wishlist.removeByItem(it.id);
-// //       window.dispatchEvent(new CustomEvent('wishlist-updated'));
-// //       await load();
-// //     } catch (e: any) {
-// //       alert(e?.message || 'Failed to move to basket');
-// //       await load();
-// //     } finally {
-// //       setBusy((b) => ({ ...b, [it.id]: false }));
-// //     }
-// //   }
-
-// //   async function removeItem(it: WishlistItem) {
-// //     try {
-// //       setBusy((b) => ({ ...b, [it.id]: true }));
-// //       await wishlist.removeByItem(it.id);
-// //       window.dispatchEvent(new CustomEvent('wishlist-updated'));
-// //       await load();
-// //     } catch (e: any) {
-// //       alert(e?.message || 'Failed to remove item');
-// //       await load();
-// //     } finally {
-// //       setBusy((b) => ({ ...b, [it.id]: false }));
-// //     }
-// //   }
-
-// //   return (
-// //     <>
-// //       <Header />
-// //       <main className="container py-6">
-// //         <div className="mb-4 flex items-center justify-between">
-// //           <h1 className="text-xl font-semibold">Favourites</h1>
-// //           {/* MRP total removed for a cleaner header */}
-// //         </div>
-
-// //         {loading && <div className="text-sm text-zinc-600">Loading…</div>}
-
-// //         {!loading && err && (
-// //           <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-// //             {err.includes('Unauthorized') ? (
-// //               <>
-// //                 Not signed in.{` `}
-// //                 <button
-// //                   className="underline"
-// //                   onClick={() =>
-// //                     window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }))
-// //                   }
-// //                 >
-// //                   Sign in
-// //                 </button>{' '}
-// //                 to view favourites.
-// //               </>
-// //             ) : (
-// //               err
-// //             )}
-// //           </div>
-// //         )}
-
-// //         {!loading && isEmpty && (
-// //           <div className="rounded border bg-white p-8 text-center">
-// //             <div className="text-lg font-semibold text-zinc-800">No favourites yet</div>
-// //             <div className="mt-2 text-zinc-600">Save products to find them quickly later.</div>
-// //             <Link
-// //               to="/"
-// //               className="mt-4 inline-block rounded-md bg-amber-500 px-4 py-2 text-white font-semibold hover:bg-amber-600"
-// //             >
-// //               Browse products
-// //             </Link>
-// //           </div>
-// //         )}
-
-// //         {!loading && items.length > 0 && (
-// //           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
-// //             {items.map((it) => (
-// //               <div key={it.id} className="rounded-lg border bg-white overflow-hidden">
-// //                 <Link to={`/product/${it.product_id}`} className="block">
-// //                   <div className="aspect-[5/6] bg-muted">
-// //                     <img
-// //                       src={it.image_url || `https://picsum.photos/seed/${it.product_id}/600/800`}
-// //                       alt={it.name ?? ''}
-// //                       className="h-full w-full object-cover"
-// //                       loading="lazy"
-// //                     />
-// //                   </div>
-// //                 </Link>
-// //                 <div className="p-2.5">
-// //                   <Link to={`/product/${it.product_id}`} className="block">
-// //                     <div className="line-clamp-1 text-[13px] font-medium">{it.name}</div>
-// //                   </Link>
-// //                   <div className="mt-0.5 text-[13px] font-semibold">₹{it.price}</div>
-// //                   {it.size && (
-// //                     <div className="mt-0.5 text-xs text-zinc-600">
-// //                       Size: {it.size}
-// //                     </div>
-// //                   )}
-
-// //                   <div className="mt-2.5 grid grid-cols-2 gap-2">
-// //                     <button
-// //                       className="rounded-md bg-amber-500 text-white py-1.5 text-[12px] font-semibold hover:bg-amber-600 disabled:opacity-50"
-// //                       onClick={() => moveToBasket(it)}
-// //                       disabled={!!busy[it.id]}
-// //                     >
-// //                       Move to basket
-// //                     </button>
-// //                     <button
-// //                       className="rounded-md border py-1.5 text-[12px] hover:bg-zinc-50 disabled:opacity-50"
-// //                       onClick={() => removeItem(it)}
-// //                       disabled={!!busy[it.id]}
-// //                     >
-// //                       Remove
-// //                     </button>
-// //                   </div>
-// //                 </div>
-// //               </div>
-// //             ))}
-// //           </div>
-// //         )}
-// //       </main>
-// //     </>
-// //   );
-// // }
-// import { useEffect, useState } from 'react';
-// import Header from '@/components/common/Header';
-// import { wishlist, type WishlistItem } from '@/lib/wishlist';
-// import { cart } from '@/lib/cart';
-// import { Link } from 'react-router-dom';
-
-// export default function WishlistPage() {
-//   const [items, setItems] = useState<WishlistItem[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [err, setErr] = useState<string | null>(null);
-//   const [busy, setBusy] = useState<Record<string, boolean>>({});
-//   const [unauth, setUnauth] = useState(false); // tracks signed-out state like Basket
-
-//   async function load() {
-//     setLoading(true);
-//     setErr(null);
-//     setUnauth(false);
-//     try {
-//       const data = await wishlist.get();
-//       setItems(data.items || []);
-//     } catch (e: any) {
-//       const msg = e?.message || 'Failed to load favourites';
-//       setErr(msg);
-//       // Detect unauthorized to render inline callout instead of full redirect
-//       if (/unauthorized/i.test(msg)) setUnauth(true);
-//     } finally {
-//       setLoading(false);
-//     }
-//   }
-
-//   useEffect(() => {
-//     load();
-//   }, []);
-
-//   useEffect(() => {
-//     function onWishlistUpdated() {
-//       load();
-//     }
-//     window.addEventListener('wishlist-updated', onWishlistUpdated);
-//     return () => window.removeEventListener('wishlist-updated', onWishlistUpdated);
-//   }, []);
-
-//   const isEmpty = !loading && !unauth && items.length === 0;
-
-//   async function moveToBasket(it: WishlistItem) {
-//     try {
-//       setBusy((b) => ({ ...b, [it.id]: true }));
-//       await cart.addItem(it.product_id, 1, it.size ?? null);
-//       window.dispatchEvent(new CustomEvent('cart-updated'));
-//       await wishlist.removeByItem(it.id);
-//       window.dispatchEvent(new CustomEvent('wishlist-updated'));
-//       await load();
-//     } catch (e: any) {
-//       alert(e?.message || 'Failed to move to basket');
-//       await load();
-//     } finally {
-//       setBusy((b) => ({ ...b, [it.id]: false }));
-//     }
-//   }
-
-//   async function removeItem(it: WishlistItem) {
-//     try {
-//       setBusy((b) => ({ ...b, [it.id]: true }));
-//       await wishlist.removeByItem(it.id);
-//       window.dispatchEvent(new CustomEvent('wishlist-updated'));
-//       await load();
-//     } catch (e: any) {
-//       alert(e?.message || 'Failed to remove item');
-//       await load();
-//     } finally {
-//       setBusy((b) => ({ ...b, [it.id]: false }));
-//     }
-//   }
-
-//   return (
-//     <>
-//       <Header />
-//       <main className="container py-6">
-//         <div className="mb-4 flex items-center justify-between">
-//           <h1 className="text-xl font-semibold">Favourites</h1>
-//         </div>
-
-//         {/* Signed-out inline banner (same pattern as Basket) */}
-//         {!loading && unauth && (
-//           <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-//             Not signed in.{` `}
-//             <button
-//               className="underline"
-//               onClick={() =>
-//                 window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }))
-//               }
-//             >
-//               Sign in
-//             </button>
-//             {` `}to view favourites.
-//           </div>
-//         )}
-
-//         {loading && <div className="text-sm text-zinc-600">Loading…</div>}
-
-//         {/* Non-auth errors (other than Unauthorized) */}
-//         {!loading && !unauth && err && (
-//           <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-//             {err}
-//           </div>
-//         )}
-
-//         {/* Empty state for signed-in users */}
-//         {!loading && isEmpty && (
-//           <div className="rounded border bg-white p-8 text-center">
-//             <div className="text-lg font-semibold text-zinc-800">No favourites yet</div>
-//             <div className="mt-2 text-zinc-600">Save products to find them quickly later.</div>
-//             <Link
-//               to="/"
-//               className="mt-4 inline-block rounded-md bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
-//             >
-//               Browse products
-//             </Link>
-//           </div>
-//         )}
-
-//         {/* Grid for signed-in users */}
-//         {!loading && !unauth && items.length > 0 && (
-//           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
-//             {items.map((it) => (
-//               <div key={it.id} className="overflow-hidden rounded-lg border bg-white">
-//                 <Link to={`/product/${it.product_id}`} className="block">
-//                   <div className="aspect-[5/6] bg-muted">
-//                     <img
-//                       src={it.image_url || `https://picsum.photos/seed/${it.product_id}/600/800`}
-//                       alt={it.name ?? ''}
-//                       className="h-full w-full object-cover"
-//                       loading="lazy"
-//                     />
-//                   </div>
-//                 </Link>
-//                 <div className="p-2.5">
-//                   <Link to={`/product/${it.product_id}`} className="block">
-//                     <div className="line-clamp-1 text-[13px] font-medium">{it.name}</div>
-//                   </Link>
-//                   <div className="mt-0.5 text-[13px] font-semibold">₹{it.price}</div>
-//                   {it.size && (
-//                     <div className="mt-0.5 text-xs text-zinc-600">Size: {it.size}</div>
-//                   )}
-
-//                   <div className="mt-2.5 grid grid-cols-2 gap-2">
-//                     <button
-//                       className="rounded-md bg-amber-500 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
-//                       onClick={() => moveToBasket(it)}
-//                       disabled={!!busy[it.id]}
-//                     >
-//                       Move to basket
-//                     </button>
-//                     <button
-//                       className="rounded-md border py-1.5 text-[12px] hover:bg-zinc-50 disabled:opacity-50"
-//                       onClick={() => removeItem(it)}
-//                       disabled={!!busy[it.id]}
-//                     >
-//                       Remove
-//                     </button>
-//                   </div>
-//                 </div>
-//               </div>
-//             ))}
-//           </div>
-//         )}
-//       </main>
-//     </>
-//   );
-// }
-import { useEffect, useState } from 'react';
-import Header from '@/components/common/Header';
-import { wishlist, type WishlistItem } from '@/lib/wishlist';
-import { cart } from '@/lib/cart';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import Header from "@/components/common/Header";
+import TextCategoryBar from "@/components/common/TextCategoryBar";
+import Footer from "@/components/common/Footer";
+import WishlistSkeleton from "@/components/skeleton/WishlistSkeleton";
+import { wishlist, type WishlistItem } from "@/lib/wishlist";
+import { cart } from "@/lib/cart";
+import { Link } from "react-router-dom";
 
 export default function WishlistPage() {
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
-  const [unauth, setUnauth] = useState(false); // tracks signed-out state like Basket
+  const [unauth, setUnauth] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -354,9 +22,8 @@ export default function WishlistPage() {
       const data = await wishlist.get();
       setItems(data.items || []);
     } catch (e: any) {
-      const msg = e?.message || 'Failed to load favourites';
+      const msg = e?.message || "Failed to load favourites";
       setErr(msg);
-      // Detect unauthorized to render inline callout instead of full redirect
       if (/unauth|401|forbidden/i.test(msg)) setUnauth(true);
     } finally {
       setLoading(false);
@@ -368,20 +35,16 @@ export default function WishlistPage() {
   }, []);
 
   useEffect(() => {
-    function onWishlistUpdated() {
-      load();
-    }
-    window.addEventListener('wishlist-updated', onWishlistUpdated);
-    return () => window.removeEventListener('wishlist-updated', onWishlistUpdated);
+    const onWishlistUpdated = () => load();
+    window.addEventListener("wishlist-updated", onWishlistUpdated);
+    return () =>
+      window.removeEventListener("wishlist-updated", onWishlistUpdated);
   }, []);
 
-  // Refetch after successful sign-in from modal
   useEffect(() => {
-    function onAuthChanged() {
-      setTimeout(() => load(), 50);
-    }
-    window.addEventListener('auth-changed', onAuthChanged);
-    return () => window.removeEventListener('auth-changed', onAuthChanged);
+    const onAuthChanged = () => setTimeout(() => load(), 50);
+    window.addEventListener("auth-changed", onAuthChanged);
+    return () => window.removeEventListener("auth-changed", onAuthChanged);
   }, []);
 
   const isEmpty = !loading && !unauth && items.length === 0;
@@ -390,12 +53,12 @@ export default function WishlistPage() {
     try {
       setBusy((b) => ({ ...b, [it.id]: true }));
       await cart.addItem(it.product_id, 1, it.size ?? null);
-      window.dispatchEvent(new CustomEvent('cart-updated'));
+      window.dispatchEvent(new CustomEvent("cart-updated"));
       await wishlist.removeByItem(it.id);
-      window.dispatchEvent(new CustomEvent('wishlist-updated'));
+      window.dispatchEvent(new CustomEvent("wishlist-updated"));
       await load();
     } catch (e: any) {
-      alert(e?.message || 'Failed to move to basket');
+      alert(e?.message || "Failed to move to basket");
       await load();
     } finally {
       setBusy((b) => ({ ...b, [it.id]: false }));
@@ -406,73 +69,136 @@ export default function WishlistPage() {
     try {
       setBusy((b) => ({ ...b, [it.id]: true }));
       await wishlist.removeByItem(it.id);
-      window.dispatchEvent(new CustomEvent('wishlist-updated'));
+      window.dispatchEvent(new CustomEvent("wishlist-updated"));
       await load();
     } catch (e: any) {
-      alert(e?.message || 'Failed to remove item');
+      alert(e?.message || "Failed to remove item");
       await load();
     } finally {
       setBusy((b) => ({ ...b, [it.id]: false }));
     }
   }
 
+  // Replace with live categories if available
+  const level1 = [
+    { name: "Women", slug: "women" },
+  { name: "Men", slug: "men" },
+  { name: "Kids", slug: "kids" },
+  { name: "Footwear", slug: "footwear" },
+  { name: "Bags", slug: "bags" },
+  { name: "Beauty", slug: "beauty" },
+  { name: "Watches", slug: "watches" },
+  ];
+
   return (
     <>
       <Header />
-      <main className="container py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Favourites</h1>
+
+      {/* Category rail */}
+      <TextCategoryBar kind="level1" basePath="/category" items={level1} />
+<div className="border-b border-zinc-200" />
+
+      {/* Gray divider under the bar */}
+      <div className="border-b border-zinc-200" />
+
+      {/* Header card with right-side heart */}
+      <div className="container">
+        <div className="mt-4 rounded-lg bg-white shadow-sm ring-1 ring-zinc-100">
+          <div className="flex items-start justify-between px-5 py-4">
+            <div>
+              <h1 className="text-2xl font-semibold">Favourites</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                View your most wanted products.
+              </p>
+            </div>
+            <div className="ml-4 shrink-0 text-zinc-700">
+              {/* Outline heart */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                className="h-10 w-10"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </div>
+          </div>
+          <div className="border-t border-zinc-100" />
         </div>
 
-        {/* Signed-out inline banner (same pattern as Basket) */}
+        {/* Extra gap below header card */}
+        <div className="mb-8" />
+      </div>
+
+      {/* Taller main so footer sits lower on short pages */}
+      <main className="container pb-12 min-h-[65svh]">
+        {/* Signed-out inline banner */}
         {!loading && unauth && (
-          <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-            Not signed in.{` `}
+          <div className="my-8 flex flex-col items-center rounded-xl border border-yellow-300 bg-yellow-50 px-8 py-10 text-center text-yellow-900 shadow-md">
+            <h2 className="mb-2 text-xl font-semibold">
+              Sign in to view your favourites!
+            </h2>
+            <p className="mb-6 max-w-xs text-sm text-yellow-700">
+              Save and access your favourites anytime across devices.
+            </p>
             <button
-              className="underline"
+              className="rounded-md bg-yellow-500 px-6 py-2 font-semibold text-white shadow hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               onClick={() =>
-                window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }))
+                window.dispatchEvent(
+                  new CustomEvent("open-auth", { detail: "signin" })
+                )
               }
+              type="button"
             >
-              Sign in
+              Sign In
             </button>
-            {` `}to view favourites.
           </div>
         )}
 
-        {loading && <div className="text-sm text-zinc-600">Loading…</div>}
+        {/* Loading skeleton */}
+        {loading && <WishlistSkeleton count={12} showActions />}
 
-        {/* Non-auth errors (other than Unauthorized) */}
+        {/* Non-auth errors */}
         {!loading && !unauth && err && (
           <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
             {err}
           </div>
         )}
 
-        {/* Empty state for signed-in users */}
+        {/* Empty state with extra bottom gap */}
         {!loading && isEmpty && (
-          <div className="rounded border bg-white p-8 text-center">
-            <div className="text-lg font-semibold text-zinc-800">No favourites yet</div>
-            <div className="mt-2 text-zinc-600">Save products to find them quickly later.</div>
+          <div className="mb-12 my-8 mx-auto max-w-sm rounded-xl border border-yellow-300 bg-yellow-50 px-8 py-10 text-center text-yellow-900 shadow-md">
+            <h2 className="mb-2 text-xl font-semibold">No favourites yet</h2>
+            <p className="mb-6 max-w-xs text-sm text-yellow-700">
+              Save products to find them quickly later.
+            </p>
             <Link
               to="/"
-              className="mt-4 inline-block rounded-md bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
+              className="rounded-md bg-yellow-500 px-6 py-2 font-semibold text-white shadow hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               Browse products
             </Link>
           </div>
         )}
 
-        {/* Grid for signed-in users */}
+        {/* Grid for signed-in users with larger bottom gap */}
         {!loading && !unauth && items.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
+          <div className="mb-12 grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
             {items.map((it) => (
               <div key={it.id} className="overflow-hidden rounded-lg border bg-white">
                 <Link to={`/product/${it.product_id}`} className="block">
                   <div className="aspect-[5/6] bg-muted">
                     <img
-                      src={it.image_url || `https://picsum.photos/seed/${it.product_id}/600/800`}
-                      alt={it.name ?? ''}
+                      src={
+                        it.image_url ||
+                        `https://picsum.photos/seed/${it.product_id}/600/800`
+                      }
+                      alt={it.name ?? ""}
                       className="h-full w-full object-cover"
                       loading="lazy"
                     />
@@ -480,27 +206,32 @@ export default function WishlistPage() {
                 </Link>
                 <div className="p-2.5">
                   <Link to={`/product/${it.product_id}`} className="block">
-                    <div className="line-clamp-1 text-[13px] font-medium">{it.name}</div>
+                    <div className="line-clamp-1 text-[13px] font-medium">
+                      {it.name}
+                    </div>
                   </Link>
-                  <div className="mt-0.5 text-[13px] font-semibold">₹{it.price}</div>
+                  <div className="mt-0.5 text-[13px] font-semibold">
+                    ₹{it.price}
+                  </div>
                   {it.size && (
-                    <div className="mt-0.5 text-xs text-zinc-600">Size: {it.size}</div>
+                    <div className="mt-0.5 text-xs text-zinc-600">
+                      Size: {it.size}
+                    </div>
                   )}
-
                   <div className="mt-2.5 grid grid-cols-2 gap-2">
                     <button
                       className="rounded-md bg-amber-500 py-1.5 text-[12px] font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
                       onClick={() => moveToBasket(it)}
                       disabled={!!busy[it.id]}
                     >
-                      Move to basket
+                      {busy[it.id] ? "Moving..." : "Move to basket"}
                     </button>
                     <button
                       className="rounded-md border py-1.5 text-[12px] hover:bg-zinc-50 disabled:opacity-50"
                       onClick={() => removeItem(it)}
                       disabled={!!busy[it.id]}
                     >
-                      Remove
+                      {busy[it.id] ? "Removing..." : "Remove"}
                     </button>
                   </div>
                 </div>
@@ -509,6 +240,8 @@ export default function WishlistPage() {
           </div>
         )}
       </main>
+
+      <Footer />
     </>
   );
 }

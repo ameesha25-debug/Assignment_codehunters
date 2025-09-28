@@ -18,7 +18,11 @@ const getNum = (p: URLSearchParams, k: string) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
 };
-const setOrDel = (p: URLSearchParams, k: string, v?: string | number | null) => {
+const setOrDel = (
+  p: URLSearchParams,
+  k: string,
+  v?: string | number | null
+) => {
   if (v === undefined || v === null || v === "") p.delete(k);
   else p.set(k, String(v));
 };
@@ -68,7 +72,6 @@ export default function CategoryPLP() {
 
   const [params, setParams] = useSearchParams();
 
-  // Resolve route context
   const topSlug = parentSlug ?? slug ?? null; // e.g., "women"
   const subSlug = childSlug ?? null; // e.g., "tops"
 
@@ -131,20 +134,20 @@ export default function CategoryPLP() {
 
   const showShopFor = useMemo(() => shopFor.length > 0, [shopFor]);
 
-  // URL-derived filters
   const priceMin = getNum(params, "price_gte");
   const priceMax = getNum(params, "price_lte");
   const ratingMin = getNum(params, "rating_gte");
   const isBestseller = params.get("is_bestseller") === "true";
   const isTrending = params.get("is_trending") === "true";
 
-  // Apply filters then sort
   const visibleProducts = useMemo(() => {
     let list = products;
     if (priceMin != null) list = list.filter((p) => (p.price ?? 0) >= priceMin);
     if (priceMax != null) list = list.filter((p) => (p.price ?? 0) <= priceMax);
-    if (ratingMin === -1) list = list.filter((p) => p.rating == null || p.rating === 0);
-    else if (ratingMin != null) list = list.filter((p) => (p.rating ?? 0) >= ratingMin);
+    if (ratingMin === -1)
+      list = list.filter((p) => p.rating == null || p.rating === 0);
+    else if (ratingMin != null)
+      list = list.filter((p) => (p.rating ?? 0) >= ratingMin);
     if (isBestseller)
       list = list.filter(
         (p) =>
@@ -162,14 +165,16 @@ export default function CategoryPLP() {
     return sortProducts(list, sort);
   }, [products, sort, priceMin, priceMax, ratingMin, isBestseller, isTrending]);
 
+  // Updated clearAll to reliably clear all filters
   const clearAll = () => {
-    const next = clearKeys(params, [
+    const next = new URLSearchParams(params.toString());
+    [
       "price_gte",
       "price_lte",
       "rating_gte",
       "is_bestseller",
       "is_trending",
-    ]);
+    ].forEach((key) => next.delete(key));
     setParams(next, { replace: true });
   };
 
@@ -177,9 +182,7 @@ export default function CategoryPLP() {
     <>
       <Header />
 
-      {/* Common parent category bar */}
       <div className="mb-2">
-       
         <div className="w-screen border-b border-gray-200 relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
           <div className="container">
             <TextCategoryBar
@@ -215,7 +218,9 @@ export default function CategoryPLP() {
                 Filters
               </button>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-600">{visibleProducts.length} results</span>
+                <span className="text-xs text-zinc-600">
+                  {visibleProducts.length} results
+                </span>
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortKey)}
@@ -235,7 +240,10 @@ export default function CategoryPLP() {
               <div className="sticky top-16 pt-0 mt-0">
                 <div className="mb-3 flex items-center justify-between px-1">
                   <h2 className="text-sm font-semibold">FILTERS</h2>
-                  <button className="text-xs text-indigo-600 hover:underline" onClick={clearAll}>
+                  <button
+                    className="text-xs text-indigo-600 hover:underline"
+                    onClick={clearAll}
+                  >
                     Clear all
                   </button>
                 </div>
@@ -272,7 +280,12 @@ export default function CategoryPLP() {
                     </div>
                     <button
                       className="mt-2 text-xs text-indigo-600 hover:underline"
-                      onClick={() => setParams(clearKeys(params, ["price_gte", "price_lte"]), { replace: true })}
+                      onClick={() =>
+                        setParams(
+                          clearKeys(params, ["price_gte", "price_lte"]),
+                          { replace: true }
+                        )
+                      }
                     >
                       Clear
                     </button>
@@ -286,19 +299,28 @@ export default function CategoryPLP() {
                           type="radio"
                           name="rating"
                           checked={ratingMin == null}
-                          onChange={() => setParams(clearKeys(params, ["rating_gte"]), { replace: true })}
+                          onChange={() =>
+                            setParams(clearKeys(params, ["rating_gte"]), {
+                              replace: true,
+                            })
+                          }
                         />
                         <span>Any rating</span>
                       </label>
 
                       {ratingOptions.map((n) => (
-                        <label key={n} className="inline-flex items-center gap-2">
+                        <label
+                          key={n}
+                          className="inline-flex items-center gap-2"
+                        >
                           <input
                             type="radio"
                             name="rating"
                             checked={ratingMin === n}
                             onChange={() => {
-                              const next = new URLSearchParams(params.toString());
+                              const next = new URLSearchParams(
+                                params.toString()
+                              );
                               setOrDel(next, "rating_gte", n);
                               next.delete("page");
                               setParams(next, { replace: true });
@@ -334,7 +356,11 @@ export default function CategoryPLP() {
                           checked={isBestseller}
                           onChange={(e) => {
                             const next = new URLSearchParams(params.toString());
-                            setOrDel(next, "is_bestseller", e.target.checked ? "true" : null);
+                            setOrDel(
+                              next,
+                              "is_bestseller",
+                              e.target.checked ? "true" : null
+                            );
                             next.delete("page");
                             setParams(next, { replace: true });
                           }}
@@ -347,7 +373,11 @@ export default function CategoryPLP() {
                           checked={isTrending}
                           onChange={(e) => {
                             const next = new URLSearchParams(params.toString());
-                            setOrDel(next, "is_trending", e.target.checked ? "true" : null);
+                            setOrDel(
+                              next,
+                              "is_trending",
+                              e.target.checked ? "true" : null
+                            );
                             next.delete("page");
                             setParams(next, { replace: true });
                           }}
@@ -356,7 +386,12 @@ export default function CategoryPLP() {
                       </label>
                       <button
                         className="self-start text-xs text-indigo-600 hover:underline"
-                        onClick={() => setParams(clearKeys(params, ["is_bestseller", "is_trending"]), { replace: true })}
+                        onClick={() =>
+                          setParams(
+                            clearKeys(params, ["is_bestseller", "is_trending"]),
+                            { replace: true }
+                          )
+                        }
                       >
                         Clear
                       </button>
@@ -369,8 +404,14 @@ export default function CategoryPLP() {
             {/* Right: Content */}
             <div className="col-span-12 md:col-span-9">
               {/* Breadcrumbs */}
-              <nav className="mb-2 text-sm text-gray-500" aria-label="Breadcrumb">
-                <Link to="/" className="text-gray-500 hover:text-yellow-500 hover:underline">
+              <nav
+                className="mb-2 text-sm text-gray-500"
+                aria-label="Breadcrumb"
+              >
+                <Link
+                  to="/"
+                  className="text-gray-500 hover:text-yellow-500 hover:underline"
+                >
                   Home
                 </Link>
                 {parent && (
@@ -396,7 +437,9 @@ export default function CategoryPLP() {
               <div className="hidden md:flex items-center justify-between pb-2">
                 <div className="flex items-center gap-3 min-w-0">
                   {showShopFor && (
-                    <span className="text-sm font-semibold tracking-wide text-zinc-700">Shop For</span>
+                    <span className="text-sm font-semibold tracking-wide text-zinc-700">
+                      Shop For
+                    </span>
                   )}
                   {showShopFor && (
                     <nav className="flex flex-wrap gap-2">
@@ -413,7 +456,9 @@ export default function CategoryPLP() {
                   )}
                 </div>
                 <div className="ml-6 flex items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-600">SORT BY</span>
+                  <span className="text-xs font-medium text-zinc-600">
+                    SORT BY
+                  </span>
                   <select
                     value={sort}
                     onChange={(e) => setSort(e.target.value as SortKey)}
@@ -430,13 +475,19 @@ export default function CategoryPLP() {
               {/* Active filter chips */}
               <div className="mb-3 text-sm">
                 Products for {category?.name ?? "Category"}:{" "}
-                <span className="text-muted-foreground">{visibleProducts.length} available</span>
+                <span className="text-muted-foreground">
+                  {visibleProducts.length} available
+                </span>
               </div>
               <div className="mb-2 flex flex-wrap gap-2">
                 {priceMin != null && (
                   <button
                     className="rounded-full border px-2 py-1 text-xs"
-                    onClick={() => setParams(clearKeys(params, ["price_gte"]), { replace: true })}
+                    onClick={() =>
+                      setParams(clearKeys(params, ["price_gte"]), {
+                        replace: true,
+                      })
+                    }
                   >
                     Min ₹{priceMin} ×
                   </button>
@@ -444,7 +495,11 @@ export default function CategoryPLP() {
                 {priceMax != null && (
                   <button
                     className="rounded-full border px-2 py-1 text-xs"
-                    onClick={() => setParams(clearKeys(params, ["price_lte"]), { replace: true })}
+                    onClick={() =>
+                      setParams(clearKeys(params, ["price_lte"]), {
+                        replace: true,
+                      })
+                    }
                   >
                     Max ₹{priceMax} ×
                   </button>
@@ -452,17 +507,28 @@ export default function CategoryPLP() {
                 {ratingMin != null && (
                   <button
                     className="rounded-full border px-2 py-1 text-xs"
-                    onClick={() => setParams(clearKeys(params, ["rating_gte"]), { replace: true })}
+                    onClick={() =>
+                      setParams(clearKeys(params, ["rating_gte"]), {
+                        replace: true,
+                      })
+                    }
                   >
                     {ratingMin === -1
                       ? "No ratings"
-                      : `${Number(ratingMin).toFixed(Number.isInteger(ratingMin) ? 0 : 1)}+ ★`} ×
+                      : `${Number(ratingMin).toFixed(
+                          Number.isInteger(ratingMin) ? 0 : 1
+                        )}+ ★`}{" "}
+                    ×
                   </button>
                 )}
                 {isBestseller && (
                   <button
                     className="rounded-full border px-2 py-1 text-xs"
-                    onClick={() => setParams(clearKeys(params, ["is_bestseller"]), { replace: true })}
+                    onClick={() =>
+                      setParams(clearKeys(params, ["is_bestseller"]), {
+                        replace: true,
+                      })
+                    }
                   >
                     Bestseller ×
                   </button>
@@ -470,14 +536,18 @@ export default function CategoryPLP() {
                 {isTrending && (
                   <button
                     className="rounded-full border px-2 py-1 text-xs"
-                    onClick={() => setParams(clearKeys(params, ["is_trending"]), { replace: true })}
+                    onClick={() =>
+                      setParams(clearKeys(params, ["is_trending"]), {
+                        replace: true,
+                      })
+                    }
                   >
                     Trending ×
                   </button>
                 )}
               </div>
 
-              {/* Product grid: denser columns */}
+              {/* Product grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3.5">
                 {visibleProducts
                   .filter((p) => !!p?.id)
@@ -487,19 +557,27 @@ export default function CategoryPLP() {
               </div>
 
               {visibleProducts.length === 0 && (
-                <p className="mt-6 text-sm text-muted-foreground">No products found in this category.</p>
+                <p className="mt-6 text-sm text-muted-foreground">
+                  No products found in this category.
+                </p>
               )}
             </div>
           </section>
         )}
-
         <div className="h-10" />
       </main>
 
       {/* Mobile filters drawer */}
-      <div className={`fixed inset-0 z-40 md:hidden ${showMobileFilters ? "" : "pointer-events-none"}`} aria-hidden={!showMobileFilters}>
+      <div
+        className={`fixed inset-0 z-40 md:hidden ${
+          showMobileFilters ? "" : "pointer-events-none"
+        }`}
+        aria-hidden={!showMobileFilters}
+      >
         <div
-          className={`absolute inset-0 bg-black/40 transition-opacity ${showMobileFilters ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 bg-black/40 transition-opacity ${
+            showMobileFilters ? "opacity-100" : "opacity-0"
+          }`}
           onClick={() => setShowMobileFilters(false)}
         />
         <div
@@ -512,7 +590,10 @@ export default function CategoryPLP() {
           <div className="sticky top-0 z-10 -mb-px bg-white px-4 pt-3 pb-2 border-b">
             <div className="mx-auto flex max-w-lg items-center justify-between">
               <h3 className="text-sm font-semibold">Filters</h3>
-              <button className="text-sm underline" onClick={() => setShowMobileFilters(false)}>
+              <button
+                className="text-sm underline"
+                onClick={() => setShowMobileFilters(false)}
+              >
                 Done
               </button>
             </div>
@@ -557,10 +638,15 @@ export default function CategoryPLP() {
                     type="radio"
                     name="m_rating"
                     checked={ratingMin == null}
-                    onChange={() => setParams(clearKeys(params, ["rating_gte"]), { replace: true })}
+                    onChange={() =>
+                      setParams(clearKeys(params, ["rating_gte"]), {
+                        replace: true,
+                      })
+                    }
                   />
                   <span>Any rating</span>
                 </label>
+
                 {ratingOptions.map((n) => (
                   <label key={n} className="inline-flex items-center gap-2">
                     <input
@@ -577,6 +663,7 @@ export default function CategoryPLP() {
                     <span>{n.toFixed(1)}+ stars</span>
                   </label>
                 ))}
+
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="radio"
@@ -603,7 +690,11 @@ export default function CategoryPLP() {
                     checked={isBestseller}
                     onChange={(e) => {
                       const next = new URLSearchParams(params.toString());
-                      setOrDel(next, "is_bestseller", e.target.checked ? "true" : null);
+                      setOrDel(
+                        next,
+                        "is_bestseller",
+                        e.target.checked ? "true" : null
+                      );
                       next.delete("page");
                       setParams(next, { replace: true });
                     }}
@@ -616,13 +707,28 @@ export default function CategoryPLP() {
                     checked={isTrending}
                     onChange={(e) => {
                       const next = new URLSearchParams(params.toString());
-                      setOrDel(next, "is_trending", e.target.checked ? "true" : null);
+                      setOrDel(
+                        next,
+                        "is_trending",
+                        e.target.checked ? "true" : null
+                      );
                       next.delete("page");
                       setParams(next, { replace: true });
                     }}
                   />
                   <span>Trending</span>
                 </label>
+                <button
+                  className="self-start text-xs text-indigo-600 hover:underline"
+                  onClick={() =>
+                    setParams(
+                      clearKeys(params, ["is_bestseller", "is_trending"]),
+                      { replace: true }
+                    )
+                  }
+                >
+                  Clear
+                </button>
               </div>
             </FilterBlock>
           </div>

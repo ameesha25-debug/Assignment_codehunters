@@ -21,9 +21,18 @@ type Props = Level1Props | Level2Props;
 export default function TextCategoryBar(props: Props) {
   const { items, activeSlug } = props;
 
+  // Adjust top-* to match the site header height:
+  // top-16 -> 64px, top-14 -> 56px, top-12 -> 48px.
   return (
-    <nav aria-label="Categories" className="mb-3">
-      {/* Full-bleed wrapper, with an inner rail line */}
+    <nav
+      aria-label="Categories"
+      className={[
+        "sticky top-16 z-40",             // stick beneath global header
+        "bg-white shadow-sm",             // solid background and subtle divider
+        "mb-3",                           // spacing below bar
+      ].join(" ")}
+    >
+      {/* Full-bleed wrapper with an inner rail line */}
       <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
         <div className="border-b border-gray-200" />
         <div className="py-2">
@@ -43,13 +52,13 @@ export default function TextCategoryBar(props: Props) {
                     className={[
                       "relative inline-block py-3.5 text-sm font-medium transition-colors",
                       active
-                        ? "text-yellow-500" // active text is yellow
-                        : "text-muted-foreground hover:text-yellow-500", // hover turns text yellow
+                        ? "text-yellow-500"
+                        : "text-muted-foreground hover:text-yellow-500",
                     ].join(" ")}
                   >
                     <span>{it.name}</span>
 
-                    {/* Underline: persistent yellow for active; animated in on hover for inactive */}
+                    {/* Underline: persistent yellow for active; animated on hover for inactive */}
                     <span
                       className={[
                         "pointer-events-none absolute left-0 -bottom-[2px] h-[3px] rounded-full transition-all duration-200",

@@ -23,7 +23,7 @@ import ContactPage from "@/pages/ContactUsPage";
 import AboutPage from '@/pages/AboutPage';
 
 export default function App() {
-  console.log("APP is rendered");
+ 
   return (
     <Routes>
       {/* Existing routes */}

@@ -1,6 +1,22 @@
-import AccountLayout from "@/components/account/AccountLayout";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import AccountLayout from "@/components/account/AccountLayout";
+
+// Use existing site chrome
+import Header from "@/components/common/Header";
+import Footer from "@/components/common/Footer";
+import TextCategoryBar, { type Item } from "@/components/common/TextCategoryBar";
+
+// If categories are already sourced from state/store, replace this with that source
+const TOP_CATEGORIES: Item[] = [
+  { name: "Women", slug: "women" },
+  { name: "Men", slug: "men" },
+  { name: "Kids", slug: "kids" },
+  { name: "Footwear", slug: "footwear" },
+  { name: "Bags", slug: "bags" },
+  { name: "Beauty", slug: "beauty" },
+  { name: "Watches", slug: "watches" },
+];
 
 export default function AccountHub() {
   const { user } = useAuth() as ReturnType<typeof useAuth>;
@@ -8,47 +24,61 @@ export default function AccountHub() {
   const mobile = (user as any)?.mobile || (user as any)?.phone || "Not added";
 
   return (
-    <AccountLayout title="Account">
-      <div className="mx-auto max-w-5xl space-y-6">
-        {/* Header card */}
-        <div className="rounded-2xl border border-zinc-200 bg-gradient-to-r from-indigo-50 to-white p-6 sm:p-7">
-          <h1 className="text-xl font-semibold text-zinc-900">{fullName}</h1>
-          <p className="text-sm text-zinc-600">Mobile: {mobile}</p>
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <Header />
 
-        {/* Big tiles grid */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <BigTile
-            title="Profile"
-            subtitle="Name, DOB, preferences"
-            to="/account/profile"
-            icon={<span aria-hidden>📝</span>}
-          />
-          <BigTile
-            title="Addresses"
-            subtitle="Add or edit addresses"
-            to="/account/addresses"
-            icon={<span aria-hidden>🏠</span>}
-          />
-          <BigTile
-            title="Orders"
-            subtitle="Track and manage orders"
-            to="/account/orders"
-            icon={<span aria-hidden>🧾</span>}
-          />
-          <BigTile
-            title="Wishlist"
-            subtitle="Quickly find saved items"
-            to="/account/favourites"
-            icon={<span aria-hidden>💖</span>}
-          />
-        </div>
-      </div>
-    </AccountLayout>
+      {/* Keep the same TextCategoryBar API already implemented */}
+      <TextCategoryBar
+        kind="level1"
+        items={TOP_CATEGORIES}
+        basePath="/category"
+      />
+
+      <main role="main" className="flex-1">
+        <AccountLayout title="Account">
+          <div className="mx-auto max-w-5xl space-y-6">
+            {/* Header card */}
+            <div className="rounded-2xl border border-zinc-200 bg-gradient-to-r from-indigo-50 to-white p-6 sm:p-7">
+              <h1 className="text-xl font-semibold text-zinc-900">{fullName}</h1>
+              <p className="text-sm text-zinc-600">Mobile: {mobile}</p>
+            </div>
+
+            {/* Big tiles grid */}
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              <BigTile
+                title="Profile"
+                subtitle="Name, DOB, preferences"
+                to="/account/profile"
+                icon={<span aria-hidden>📝</span>}
+              />
+              <BigTile
+                title="Addresses"
+                subtitle="Add or edit addresses"
+                to="/account/addresses"
+                icon={<span aria-hidden>🏠</span>}
+              />
+              <BigTile
+                title="Orders"
+                subtitle="Track and manage orders"
+                to="/account/orders"
+                icon={<span aria-hidden>🧾</span>}
+              />
+              <BigTile
+                title="Wishlist"
+                subtitle="Quickly find saved items"
+                to="/account/favourites"
+                icon={<span aria-hidden>💖</span>}
+              />
+            </div>
+          </div>
+        </AccountLayout>
+      </main>
+
+      <Footer />
+    </div>
   );
 }
 
-// Larger presentation for hub tiles
 function BigTile({
   title,
   subtitle,
