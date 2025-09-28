@@ -1,96 +1,122 @@
 // src/lib/wishlist.ts
 
-// Central API base; falls back to localhost in dev (same as cart.ts)
 const API_BASE =
   (import.meta.env.VITE_API_URL as string) ??
   (import.meta.env.VITE_API_BASE as string) ??
   'http://localhost:4000';
 
-// Parse response into JSON with readable errors (same helper used in cart.ts)
 async function toJson<T>(res: Response): Promise<T> {
   const text = await res.text().catch(() => '');
   let data: any = {};
   if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
+    try { data = JSON.parse(text); } catch { data = { message: text }; }
   }
-  if (!res.ok) {
-    throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
   return data as T;
 }
 
-// Types returned by the API
 export type WishlistItem = {
   id: string;
   product_id: string;
   name: string;
   price: number;
   image_url?: string | null;
-  size?: string | null;
-  // rating?: number; // add if backend returns it later
+  size?: string | null; // always null from backend now
 };
 
-export type Wishlist = {
-  items: WishlistItem[];
-};
+export type Wishlist = { items: WishlistItem[] };
 
 function broadcast() {
   try {
     window.dispatchEvent(new CustomEvent('wishlist-updated'));
-  } catch {
-    // no-op if window not available (SSR)
+  } catch {}
+}
+
+// Generic in-flight guard with correct return typing
+const inFlight = new Set<string>();
+function guard<T>(key: string, run: () => Promise<T>): Promise<T> {
+  if (inFlight.has(key)) {
+    // If a duplicate call comes while in-flight, just resolve immediately with no effect;
+    // adjust to instead await the original if you track per-key promises.
+    return Promise.resolve(undefined as unknown as T);
   }
+  inFlight.add(key);
+  return run().finally(() => inFlight.delete(key));
 }
 
 export const wishlist = {
-  // Fetch current user's wishlist
   async get(): Promise<Wishlist> {
-    const res = await fetch(`${API_BASE}/api/wishlist`, {
-      credentials: 'include',
-    });
+    const res = await fetch(`${API_BASE}/api/wishlist`, { credentials: 'include' });
     return toJson<Wishlist>(res);
   },
 
-  // Add a product (optionally with size) to wishlist
-  async add(productId: string, size?: string | null): Promise<{ ok: true }> {
-    const res = await fetch(`${API_BASE}/api/wishlist/add`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, size: size ?? null }),
+  // Add without size; backend deduplicates by product_id
+  async add(productId: string): Promise<{ ok: true }> {
+    const pid = (productId || '').trim();
+    if (!pid) throw new Error('Invalid productId');
+    return guard<{ ok: true }>(`add:${pid}`, async () => {
+      const res = await fetch(`${API_BASE}/api/wishlist/add`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: pid }),
+      });
+      const data = await toJson<{ ok: true }>(res);
+      broadcast();
+      return data;
     });
-    const data = await toJson<{ ok: true }>(res);
-    broadcast();
-    return data;
   },
 
   // Remove by wishlist item id
   async removeByItem(itemId: string): Promise<{ ok: true }> {
+    const id = (itemId || '').trim();
+    if (!id) throw new Error('Invalid itemId');
     const res = await fetch(`${API_BASE}/api/wishlist/remove`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ itemId }),
+      body: JSON.stringify({ itemId: id }),
     });
     const data = await toJson<{ ok: true }>(res);
     broadcast();
     return data;
   },
 
-  // Remove by productId (+ optional size)
-  async remove(productId: string, size?: string | null): Promise<{ ok: true }> {
-    const res = await fetch(`${API_BASE}/api/wishlist/remove`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, size: size ?? null }),
+  // Remove by productId
+  async remove(productId: string): Promise<{ ok: true }> {
+    const pid = (productId || '').trim();
+    if (!pid) throw new Error('Invalid productId');
+    return guard<{ ok: true }>(`remove:${pid}`, async () => {
+      const res = await fetch(`${API_BASE}/api/wishlist/remove`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: pid }),
+      });
+      const data = await toJson<{ ok: true }>(res);
+      broadcast();
+      return data;
     });
-    const data = await toJson<{ ok: true }>(res);
-    broadcast();
-    return data;
+  },
+
+  // Move a wishlist product into basket with a required size
+  async moveToBasket(productId: string, size: string): Promise<{ ok: true }> {
+    const pid = (productId || '').trim();
+    const sz = (size || '').trim();
+    if (!pid) throw new Error('Invalid productId');
+    if (!sz) throw new Error('Please select a size');
+
+    return guard<{ ok: true }>(`move:${pid}:${sz}`, async () => {
+      const res = await fetch(`${API_BASE}/api/wishlist/move-to-basket`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: pid, size: sz }),
+      });
+      const data = await toJson<{ ok: true }>(res);
+      broadcast();
+      try { window.dispatchEvent(new CustomEvent('cart-updated')); } catch {}
+      return data;
+    });
   },
 };

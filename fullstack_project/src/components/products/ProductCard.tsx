@@ -13,12 +13,12 @@ export default function ProductCard({ product }: { product: Product }) {
   const displayTitle = product.name ?? '';
   const displayImage = product.image_url ?? `https://picsum.photos/seed/${product.id}/600/800`;
 
- 
-
-  // Wishlist integration
+  // Wishlist integration (size-agnostic)
   const { inWishlist, refresh } = useWishlist();
-  // Visual toggle state
-  const isWished = useMemo(() => inWishlist(product.id, null), [inWishlist, product.id]);
+  const isWished = useMemo(
+    () => inWishlist(product.id, null),
+    [inWishlist, product.id]
+  );
 
   const toggleWishlist = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -30,11 +30,12 @@ export default function ProductCard({ product }: { product: Product }) {
       }
       try {
         if (isWished) {
-          await wishlist.remove(product.id, null);
+          // remove by product only
+          await wishlist.remove(product.id);
         } else {
-          await wishlist.add(product.id, null);
+          // add by product only
+          await wishlist.add(product.id);
         }
-        // wishlist client emits 'wishlist-updated'; refresh for instant local update
         await refresh();
       } catch (err: any) {
         alert(err?.message || 'Failed to update favourites');
@@ -42,8 +43,6 @@ export default function ProductCard({ product }: { product: Product }) {
     },
     [user, isWished, product.id, refresh]
   );
-
- 
 
   return (
     <div className="group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-sm">
@@ -56,7 +55,6 @@ export default function ProductCard({ product }: { product: Product }) {
         style={{ aspectRatio: '3/4' }}
         title={isWished ? 'Remove from favourites' : 'Add to favourites'}
       >
-        {/* Active: red heart with fill; Inactive: muted gray with hover to red */}
         <Heart
           className={
             'h-5 w-5 stroke-2 ' +
@@ -78,35 +76,11 @@ export default function ProductCard({ product }: { product: Product }) {
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           loading="lazy"
         />
-     {product.badge && (
-  <span className="absolute left-3 top-3 z-10 rounded bg-white text-black px-2 py-1 text-xs font-semibold shadow ring-1 ring-black/10">
-    {product.badge}
-  </span>
-)}
-
-
-
-        {/* Basket icon (hover)
-        <button
-          className="absolute right-3 bottom-3 z-20 flex h-12 w-9 items-center justify-center rounded-full border-2 border-gray-400 bg-white opacity-0 transition-opacity group-hover:opacity-100"
-          aria-label="Add to basket"
-          onClick={handleAddToBasket}
-          type="button"
-          style={{ aspectRatio: '3/4' }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="22"
-            height="22"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="1.3"
-          >
-            <rect x="5" y="7.5" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M9 10V8a3 3 0 1 1 6 0v2" stroke="currentColor" strokeWidth="1.3" />
-          </svg>
-        </button> */}
+        {product.badge && (
+          <span className="absolute left-3 top-3 z-10 rounded bg-white text-black px-2 py-1 text-xs font-semibold shadow ring-1 ring-black/10">
+            {product.badge}
+          </span>
+        )}
       </Link>
 
       {/* Details */}
