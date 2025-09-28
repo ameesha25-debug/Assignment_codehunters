@@ -1,28 +1,32 @@
-// pages/ProductPDP.tsx
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import Header from '@/components/common/Header';
-import TextCategoryBar from '@/components/common/TextCategoryBar';
-import { api, type Product, type Category } from '@/lib/api';
-import { cart } from '@/lib/cart';
-import { useAuth } from '@/lib/auth';
-import { wishlist } from '@/lib/wishlist';
-import { useWishlist } from '@/wishlist/useWishlist';
-import HeartButton from '@/components/common/HeartButton';
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import Header from "@/components/common/Header";
+import TextCategoryBar from "@/components/common/TextCategoryBar";
+import { api, type Product, type Category } from "@/lib/api";
+import { cart } from "@/lib/cart";
+import { useAuth } from "@/lib/auth";
+import { wishlist } from "@/lib/wishlist";
+import { useWishlist } from "@/wishlist/useWishlist";
+import HeartButton from "@/components/common/HeartButton";
 
-import PDPSkeleton from '@/components/skeleton/PDPskeleton';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import PDPSkeleton from "@/components/skeleton/PDPskeleton";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
-type Size = 'S1' | 'S2' | 'S3';
+type Size = "S1" | "S2" | "S3";
 
 const staticTopTabs = [
-  { name: 'Women', slug: 'women' },
-  { name: 'Men', slug: 'men' },
-  { name: 'Kids', slug: 'kids' },
-  { name: 'Footwear', slug: 'footwear' },
-  { name: 'Bags', slug: 'bags' },
-  { name: 'Beauty', slug: 'beauty' },
-  { name: 'Watches', slug: 'watches' },
+  { name: "Women", slug: "women" },
+  { name: "Men", slug: "men" },
+  { name: "Kids", slug: "kids" },
+  { name: "Footwear", slug: "footwear" },
+  { name: "Bags", slug: "bags" },
+  { name: "Beauty", slug: "beauty" },
+  { name: "Watches", slug: "watches" },
 ];
 
 export default function ProductPDP() {
@@ -51,7 +55,7 @@ export default function ProductPDP() {
       const uuidRe =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!id || !uuidRe.test(id)) {
-        setErr('Invalid product id');
+        setErr("Invalid product id");
         setLoading(false);
         return;
       }
@@ -62,7 +66,7 @@ export default function ProductPDP() {
       try {
         const p = await api.productById(id);
         if (!p) {
-          setErr('Product not found');
+          setErr("Product not found");
           return;
         }
         setProduct(p);
@@ -89,7 +93,7 @@ export default function ProductPDP() {
           setAlsoLiked([]);
         }
       } catch (e: any) {
-        setErr(e?.message ?? 'Failed to load product');
+        setErr(e?.message ?? "Failed to load product");
       } finally {
         setLoading(false);
         setAdded(false);
@@ -125,36 +129,44 @@ export default function ProductPDP() {
     };
   }, [user, product, size]);
 
+
   useEffect(() => {
     if (sizeError && sizeBoxRef.current) {
-      sizeBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      sizeBoxRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   }, [sizeError]);
 
-  const priceText = useMemo(() => (product ? `₹${product.price}` : ''), [product]);
+
+  const priceText = useMemo(
+    () => (product ? `₹${product.price}` : ""),
+    [product]
+  );
 
   const onAddToBasket = async () => {
     if (!product) return;
     if (!user) {
-      window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
+      window.dispatchEvent(new CustomEvent("open-auth", { detail: "signin" }));
       return;
     }
     if (alreadyInCart) {
-      navigate('/basket');
+      navigate("/basket");
       return;
     }
     if (productHasSizes && !size) {
-      setSizeError('Please select a size to continue');
+      setSizeError("Please select a size to continue");
       return;
     }
     setSizeError(null);
     try {
       await cart.addItem(product.id, 1, size);
-      window.dispatchEvent(new CustomEvent('cart-updated'));
+      window.dispatchEvent(new CustomEvent("cart-updated"));
       setAdded(true);
       setAlreadyInCart(true);
     } catch (e: any) {
-      alert(e?.message || 'Failed to add to basket');
+      alert(e?.message || "Failed to add to basket");
     }
   };
 
@@ -168,7 +180,7 @@ export default function ProductPDP() {
   const toggleFavourite = useCallback(async () => {
     if (!product) return;
     if (!user) {
-      window.dispatchEvent(new CustomEvent('open-auth', { detail: 'signin' }));
+      window.dispatchEvent(new CustomEvent("open-auth", { detail: "signin" }));
       return;
     }
     try {
@@ -179,7 +191,7 @@ export default function ProductPDP() {
       }
       await refresh(); // immediate UI sync
     } catch (e: any) {
-      alert(e?.message || 'Failed to update favourites');
+      alert(e?.message || "Failed to update favourites");
     }
   }, [product, user, isFaved, refresh]);
 
@@ -215,8 +227,13 @@ export default function ProductPDP() {
         <Header />
         {TopBar}
         <main className="container">
-          <div className="py-10 text-sm text-red-600">{err ?? 'Product not found'}</div>
-          <button className="mt-3 rounded border px-3 py-2 text-sm" onClick={() => navigate(-1)}>
+          <div className="py-10 text-sm text-red-600">
+            {err ?? "Product not found"}
+          </div>
+          <button
+            className="mt-3 rounded border px-3 py-2 text-sm"
+            onClick={() => navigate(-1)}
+          >
             Go back
           </button>
         </main>
@@ -224,7 +241,11 @@ export default function ProductPDP() {
     );
   }
 
-  const hasParentDepth = !!(parentCat && leafCat && parentCat.id !== leafCat.id);
+  const hasParentDepth = !!(
+    parentCat &&
+    leafCat &&
+    parentCat.id !== leafCat.id
+  );
   const topForUI = parentCat ?? leafCat ?? null;
 
   return (
@@ -235,7 +256,10 @@ export default function ProductPDP() {
       <main className="container">
         {/* Breadcrumbs */}
         <nav className="mb-3 text-sm text-gray-500" aria-label="Breadcrumb">
-          <Link to="/" className="text-gray-500 hover:text-yellow-500 hover:underline">
+          <Link
+            to="/"
+            className="text-gray-500 hover:text-yellow-500 hover:underline"
+          >
             Home
           </Link>
 
@@ -277,10 +301,13 @@ export default function ProductPDP() {
                   w-full bg-muted flex items-center justify-center
                   h-[440px] md:h-[500px] lg:h-[540px]
                 "
-                style={{ maxHeight: '81vh' }}
+                style={{ maxHeight: "81vh" }}
               >
                 <img
-                  src={product.image_url || `https://picsum.photos/seed/${product.id}/900/1200`}
+                  src={
+                    product.image_url ||
+                    `https://picsum.photos/seed/${product.id}/900/1200`
+                  }
                   alt={product.name}
                   className="max-h-full max-w-full object-contain"
                 />
@@ -294,9 +321,13 @@ export default function ProductPDP() {
 
             <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
               {product.rating != null && <span>{product.rating} ★</span>}
-              {product.review_count != null && <span>{product.review_count} reviews</span>}
+              {product.review_count != null && (
+                <span>{product.review_count} reviews</span>
+              )}
               {product.badge && (
-                <span className="rounded-full border px-2 py-0.5 text-xs">{product.badge}</span>
+                <span className="rounded-full border px-2 py-0.5 text-xs">
+                  {product.badge}
+                </span>
               )}
             </div>
 
@@ -317,7 +348,9 @@ export default function ProductPDP() {
               </div>
               <div className="rounded-md border p-3">
                 <div className="font-semibold">Shop more, Save More</div>
-                <div className="mt-1 text-sm">Extra Rs.400 off on orders above 1999. Code MAX400</div>
+                <div className="mt-1 text-sm">
+                  Extra Rs.400 off on orders above 1999. Code MAX400
+                </div>
               </div>
             </div>
 
@@ -327,9 +360,12 @@ export default function ProductPDP() {
             </div>
             <div
               ref={sizeBoxRef}
-              className={'mt-3 flex flex-wrap gap-3 ' + (sizeError ? 'ring-2 ring-red-500 rounded-md p-1' : '')}
+              className={
+                "mt-3 flex flex-wrap gap-3 " +
+                (sizeError ? "ring-2 ring-red-500 rounded-md p-1" : "")
+              }
             >
-              {(['S1', 'S2', 'S3'] as Size[]).map((s) => (
+              {(["S1", "S2", "S3"] as Size[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => {
@@ -337,41 +373,49 @@ export default function ProductPDP() {
                     setSizeError(null);
                   }}
                   className={
-                    'min-w-[64px] rounded-md border px-6 py-3 text-sm ' +
-                    (size === s ? 'border-indigo-600 ring-2 ring-indigo-600' : 'hover:bg-muted')
+                    "min-w-[64px] rounded-md border px-6 py-3 text-sm " +
+                    (size === s
+                      ? "border-indigo-600 ring-2 ring-indigo-600"
+                      : "hover:bg-muted")
                   }
                 >
                   {s}
                 </button>
               ))}
             </div>
-            {sizeError && <div className="mt-2 text-sm text-red-600">{sizeError}</div>}
+            {sizeError && (
+              <div className="mt-2 text-sm text-red-600">{sizeError}</div>
+            )}
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 onClick={onAddToBasket}
                 className={
-                  'rounded-md px-6 py-4 text-center text-white ' +
+                  "rounded-md px-6 py-4 text-center text-white " +
                   (alreadyInCart
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    ? "bg-emerald-600 hover:bg-emerald-700"
                     : added
-                    ? 'bg-emerald-600'
-                    : 'bg-amber-500 hover:bg-amber-600')
+                    ? "bg-emerald-600"
+                    : "bg-amber-500 hover:bg-amber-600")
                 }
               >
-                {alreadyInCart ? 'GO TO BASKET' : added ? 'ADDED TO BASKET' : 'ADD TO BASKET'}
+                {alreadyInCart
+                  ? "GO TO BASKET"
+                  : added
+                  ? "ADDED TO BASKET"
+                  : "ADD TO BASKET"}
               </button>
 
               <button
                 className={
-                  'rounded-md border px-6 py-4 text-center transition ' +
-                  (isFaved ? 'border-red-500 text-red-600' : '')
+                  "rounded-md border px-6 py-4 text-center transition " +
+                  (isFaved ? "border-red-500 text-red-600" : "")
                 }
                 onClick={toggleFavourite}
-                title={isFaved ? 'Remove from favourites' : 'Add to favourites'}
+                title={isFaved ? "Remove from favourites" : "Add to favourites"}
               >
-                <span className={isFaved ? 'text-red-600' : ''}>
-                  {isFaved ? '♥ Added to Favourites' : '♡ Add to Favourites'}
+                <span className={isFaved ? "text-red-600" : ""}>
+                  {isFaved ? "♥ Added to Favourites" : "♡ Add to Favourites"}
                 </span>
               </button>
             </div>
@@ -379,9 +423,16 @@ export default function ProductPDP() {
         </section>
 
         {/* Similar Products */}
-        <Accordion type="single" collapsible defaultValue={undefined} className="mt-8">
+        <Accordion
+          type="single"
+          collapsible
+          defaultValue={undefined}
+          className="mt-8"
+        >
           <AccordionItem value="similar">
-            <AccordionTrigger className="text-lg font-semibold">Similar Products</AccordionTrigger>
+            <AccordionTrigger className="text-lg font-semibold">
+              Similar Products
+            </AccordionTrigger>
             <AccordionContent>
               <ProductsCarousel items={similar} />
             </AccordionContent>
@@ -390,9 +441,16 @@ export default function ProductPDP() {
 
         {/* Customers Also Liked */}
         {parentCat && (
-          <Accordion type="single" collapsible defaultValue="also-liked" className="mt-4">
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue="also-liked"
+            className="mt-4"
+          >
             <AccordionItem value="also-liked">
-              <AccordionTrigger className="text-lg font-semibold">Customers Also Liked</AccordionTrigger>
+              <AccordionTrigger className="text-lg font-semibold">
+                Customers Also Liked
+              </AccordionTrigger>
               <AccordionContent>
                 <ProductsCarousel items={alsoLiked} />
               </AccordionContent>
@@ -407,21 +465,29 @@ export default function ProductPDP() {
 /* --------- Supporting UI --------- */
 function ProductsCarousel({ items }: { items: Product[] }) {
   if (!items || items.length === 0) {
-    return <div className="text-sm text-muted-foreground">No items available.</div>;
+    return (
+      <div className="text-sm text-muted-foreground">No items available.</div>
+    );
   }
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
       {items
         .filter((p) => !!p?.id)
         .map((p) => (
-          <div key={p.id} className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-sm">
+          <div
+            key={p.id}
+            className="group overflow-hidden rounded-lg border bg-white transition hover:shadow-sm"
+          >
             {/* Image with Heart */}
             <div className="relative">
               <Link to={`/product/${p.id}`} className="block">
                 <div className="aspect-[3/4] bg-muted">
                   <img
-                    src={p.image_url || `https://picsum.photos/seed/${p.id}/600/800`}
-                    alt={p.name ?? ''}
+                    src={
+                      p.image_url ||
+                      `https://picsum.photos/seed/${p.id}/600/800`
+                    }
+                    alt={p.name ?? ""}
                     className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                     loading="lazy"
                   />
@@ -438,7 +504,11 @@ function ProductsCarousel({ items }: { items: Product[] }) {
             <div className="p-3">
               <div className="line-clamp-2 text-sm font-medium">{p.name}</div>
               <div className="mt-1 text-sm">₹{p.price}</div>
-              {p.rating != null && <div className="mt-1 text-xs text-muted-foreground">{p.rating} ★</div>}
+              {p.rating != null && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {p.rating} ★
+                </div>
+              )}
             </div>
           </div>
         ))}
