@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+jest.config.ts
+jest.setup.ts
+tests/
