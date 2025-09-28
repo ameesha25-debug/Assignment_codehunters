@@ -7,16 +7,12 @@ import { useMemo } from 'react';
 
 type Props = {
   productId: string;
-  // size can still be passed from PDP/UI for other flows (e.g., move-to-basket),
-  // but wishlist toggling ignores size now.
-  size?: string | null;
   className?: string;
   tooltip?: boolean;
 };
 
 export default function HeartButton({
   productId,
-  size = null, // retained to keep prop compatibility with callers
   className = '',
   tooltip = true,
 }: Props) {
@@ -36,11 +32,9 @@ export default function HeartButton({
     }
 
     if (isWished) {
-      // Remove by product only
-      await wishlist.remove(productId);
+      await wishlist.remove(productId); // remove by product
     } else {
-      // Add by product only
-      await wishlist.add(productId);
+      await wishlist.add(productId); // add by product
     }
     await refresh();
   }
