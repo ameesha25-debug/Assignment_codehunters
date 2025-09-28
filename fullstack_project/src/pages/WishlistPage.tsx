@@ -4,7 +4,6 @@ import TextCategoryBar from "@/components/common/TextCategoryBar";
 import Footer from "@/components/common/Footer";
 import WishlistSkeleton from "@/components/skeleton/WishlistSkeleton";
 import { wishlist, type WishlistItem } from "@/lib/wishlist";
-import { cart } from "@/lib/cart";
 import { Link } from "react-router-dom";
 
 export default function WishlistPage() {
@@ -13,6 +12,12 @@ export default function WishlistPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [unauth, setUnauth] = useState(false);
+
+  // Modal state
+  const [modal, setModal] = useState<{ productId: string | null; size: string | null }>({
+    productId: null,
+    size: null,
+  });
 
   async function load() {
     setLoading(true);
@@ -37,8 +42,7 @@ export default function WishlistPage() {
   useEffect(() => {
     const onWishlistUpdated = () => load();
     window.addEventListener("wishlist-updated", onWishlistUpdated);
-    return () =>
-      window.removeEventListener("wishlist-updated", onWishlistUpdated);
+    return () => window.removeEventListener("wishlist-updated", onWishlistUpdated);
   }, []);
 
   useEffect(() => {
@@ -49,19 +53,28 @@ export default function WishlistPage() {
 
   const isEmpty = !loading && !unauth && items.length === 0;
 
-  async function moveToBasket(it: WishlistItem) {
+  function openSizeModal(it: WishlistItem) {
+    setModal({ productId: it.product_id, size: null });
+  }
+
+  async function confirmModal() {
+    if (!modal.productId || !modal.size) {
+      alert("Please pick a size");
+      return;
+    }
     try {
-      setBusy((b) => ({ ...b, [it.id]: true }));
-      await cart.addItem(it.product_id, 1, it.size ?? null);
-      window.dispatchEvent(new CustomEvent("cart-updated"));
-      await wishlist.removeByItem(it.id);
-      window.dispatchEvent(new CustomEvent("wishlist-updated"));
+      setBusy((b) => ({ ...b, __global__: true }));
+      await wishlist.moveToBasket(modal.productId, modal.size);
       await load();
     } catch (e: any) {
       alert(e?.message || "Failed to move to basket");
       await load();
     } finally {
-      setBusy((b) => ({ ...b, [it.id]: false }));
+      setBusy((b) => {
+        const { __global__, ...rest } = b;
+        return rest;
+      });
+      setModal({ productId: null, size: null });
     }
   }
 
@@ -79,15 +92,33 @@ export default function WishlistPage() {
     }
   }
 
+  // Move to basket: if item already has size, move directly; else open modal
+  async function moveToBasket(it: WishlistItem) {
+    if (!it.size) {
+      openSizeModal(it);
+      return;
+    }
+    try {
+      setBusy((b) => ({ ...b, [it.id]: true }));
+      await wishlist.moveToBasket(it.product_id, it.size);
+      await load();
+    } catch (e: any) {
+      alert(e?.message || "Failed to move to basket");
+      await load();
+    } finally {
+      setBusy((b) => ({ ...b, [it.id]: false }));
+    }
+  }
+
   // Replace with live categories if available
   const level1 = [
     { name: "Women", slug: "women" },
-  { name: "Men", slug: "men" },
-  { name: "Kids", slug: "kids" },
-  { name: "Footwear", slug: "footwear" },
-  { name: "Bags", slug: "bags" },
-  { name: "Beauty", slug: "beauty" },
-  { name: "Watches", slug: "watches" },
+    { name: "Men", slug: "men" },
+    { name: "Kids", slug: "kids" },
+    { name: "Footwear", slug: "footwear" },
+    { name: "Bags", slug: "bags" },
+    { name: "Beauty", slug: "beauty" },
+    { name: "Watches", slug: "watches" },
   ];
 
   return (
@@ -96,9 +127,6 @@ export default function WishlistPage() {
 
       {/* Category rail */}
       <TextCategoryBar kind="level1" basePath="/category" items={level1} />
-<div className="border-b border-zinc-200" />
-
-      {/* Gray divider under the bar */}
       <div className="border-b border-zinc-200" />
 
       {/* Header card with right-side heart */}
@@ -140,23 +168,20 @@ export default function WishlistPage() {
         {/* Signed-out inline banner */}
         {!loading && unauth && (
           <div className="my-8 flex flex-col items-center rounded-xl border border-yellow-300 bg-yellow-50 px-8 py-10 text-center text-yellow-900 shadow-md">
-            <h2 className="mb-2 text-xl font-semibold">
-              Sign in to view your favourites!
-            </h2>
+            <h2 className="mb-2 text-xl font-semibold">Sign in to view your favourites!</h2>
             <p className="mb-6 max-w-xs text-sm text-yellow-700">
               Save and access your favourites anytime across devices.
             </p>
             <button
               className="rounded-md bg-yellow-500 px-6 py-2 font-semibold text-white shadow hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent("open-auth", { detail: "signin" })
-                )
+                window.dispatchEvent(new CustomEvent("open-auth", { detail: "signin" }))
               }
               type="button"
             >
-              Sign In
-            </button>
+              Sign in
+            </button>{" "}
+            to view favourites.
           </div>
         )}
 
@@ -210,13 +235,9 @@ export default function WishlistPage() {
                       {it.name}
                     </div>
                   </Link>
-                  <div className="mt-0.5 text-[13px] font-semibold">
-                    ₹{it.price}
-                  </div>
+                  <div className="mt-0.5 text-[13px] font-semibold">₹{it.price}</div>
                   {it.size && (
-                    <div className="mt-0.5 text-xs text-zinc-600">
-                      Size: {it.size}
-                    </div>
+                    <div className="mt-0.5 text-xs text-zinc-600">Size: {it.size}</div>
                   )}
                   <div className="mt-2.5 grid grid-cols-2 gap-2">
                     <button
@@ -241,6 +262,47 @@ export default function WishlistPage() {
         )}
       </main>
 
+      {/* Size selection modal */}
+      {modal.productId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-sm rounded-md bg-white p-4 shadow-lg">
+            <div className="mb-3 text-base font-semibold">Choose size</div>
+            <div className="mb-4 flex gap-2">
+              {["S1", "S2", "S3"].map((s) => (
+                <button
+                  key={s}
+                  className={
+                    "min-w-[48px] rounded border px-3 py-1 text-sm " +
+                    (modal.size === s
+                      ? "border-indigo-600 ring-2 ring-indigo-600"
+                      : "hover:bg-zinc-50")
+                  }
+                  onClick={() => setModal((m) => ({ ...m, size: s }))}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="rounded border px-3 py-1.5 text-sm hover:bg-zinc-50"
+                onClick={() => setModal({ productId: null, size: null })}
+              >
+                Cancel
+              </button>
+              <button
+                className="rounded bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                disabled={!modal.size}
+                onClick={confirmModal}
+              >
+                Add to basket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Optional footer */}
       <Footer />
     </>
   );

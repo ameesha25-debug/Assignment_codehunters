@@ -139,7 +139,7 @@ export default function ProductPDP() {
     }
   }, [sizeError]);
 
-  
+
   const priceText = useMemo(
     () => (product ? `₹${product.price}` : ""),
     [product]
@@ -170,11 +170,11 @@ export default function ProductPDP() {
     }
   };
 
-  // Wishlist toggle on PDP
+  // Wishlist toggle on PDP (size-agnostic)
   const { inWishlist, refresh } = useWishlist();
   const isFaved = useMemo(
-    () => (product ? inWishlist(product.id, size) : false),
-    [product, size, inWishlist]
+    () => (product ? inWishlist(product.id, null) : false),
+    [product, inWishlist]
   );
 
   const toggleFavourite = useCallback(async () => {
@@ -185,15 +185,15 @@ export default function ProductPDP() {
     }
     try {
       if (isFaved) {
-        await wishlist.remove(product.id, size ?? null);
+        await wishlist.remove(product.id);
       } else {
-        await wishlist.add(product.id, size ?? null);
+        await wishlist.add(product.id);
       }
       await refresh(); // immediate UI sync
     } catch (e: any) {
       alert(e?.message || "Failed to update favourites");
     }
-  }, [product, user, isFaved, size, refresh]);
+  }, [product, user, isFaved, refresh]);
 
   const TopBar = (
     <div className="mb-2">

@@ -89,11 +89,12 @@ export default function BasketPage() {
     }
   }
 
+  // Move cart line to favourites (wishlist is size-agnostic)
   async function onMoveToFavourites(it: CartItem) {
     try {
       setBusy((b) => ({ ...b, [it.id]: true }));
-      await wishlist.add(it.product_id, it.size ?? null);
-      window.dispatchEvent(new CustomEvent("wishlist-updated"));
+      await wishlist.add(it.product_id);
+      window.dispatchEvent(new CustomEvent('wishlist-updated'));
       await cart.removeItem(it.id);
       window.dispatchEvent(new CustomEvent("cart-updated"));
       await load();
@@ -202,8 +203,9 @@ export default function BasketPage() {
               }
               type="button"
             >
-              Sign In
-            </button>
+              Sign in
+            </button>{' '}
+            to view the basket.
           </div>
         )}
 
@@ -253,7 +255,6 @@ export default function BasketPage() {
 
         {!loading && !unauth && data && data.items.length > 0 && (
           <div className="grid grid-cols-12 gap-6">
-            {/* Items */}
             <div className="col-span-12 space-y-4 lg:col-span-8">
               {data.items.map((it) => {
                 const lineTotal = (it.price || 0) * (it.qty || 0);
@@ -332,7 +333,6 @@ export default function BasketPage() {
                           </div>
                         </div>
 
-                        {/* Bottom action row */}
                         <div className="mt-3 border-t-[1px] border-white pt-3">
                           <div className="grid grid-cols-2 gap-3">
                             <button
@@ -358,7 +358,6 @@ export default function BasketPage() {
               })}
             </div>
 
-            {/* Price Summary */}
             <div className="col-span-12 lg:col-span-4">
               <div className="rounded border bg-white p-4">
                 <div className="flex items-center justify-between text-sm">
